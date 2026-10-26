@@ -1,0 +1,570 @@
+/**
+ * English reader — client entry.
+ *
+ * The plugin contributes one sidebar panel icon and one main panel page. The
+ * sidebar entry id and the main panel key are the same, which is how the shell
+ * pairs a panel button with its page.
+ */
+import { Component, createElement as h } from 'react';
+import { SoundIcon } from './ui/icons.js';
+import { STYLE } from './ui/styles.js';
+import { EnglishReaderPage } from './ui/page.js';
+
+const NS = 'englishReader';
+/** Must equal the package name: it is the id the shell's module loader keys. */
+const PLUGIN_ID = 'dsh-english-reader';
+
+const en = {
+  'tab.library': 'Library',
+  'tab.reader': 'Reader',
+  'tab.vocab': 'Vocabulary',
+  'app.crashed': 'The reader hit a problem and stopped.',
+  'app.crashHint': 'Your books and notes are safe; reloading usually fixes it.',
+  'app.reload': 'Reload',
+  'panel.label': 'English Reader',
+  'library.loading': 'Loading the local shelf…',
+  'library.dropTitle': 'Drop an ebook here, or click to choose a file',
+  'library.dropHint': 'EPUB · TXT · Markdown · HTML · PDF — the file stays on this machine',
+  'library.importing': 'Importing…',
+  'library.importFailed': 'The file could not be imported.',
+  'library.loadFailed': 'The local shelf could not be read.',
+  'library.emptyTitle': 'No books yet',
+  'library.emptyHint': 'Import an EPUB (or a plain text file) and practise it sentence by sentence: listen, type along with the speech, or read aloud and check the transcript.',
+  'library.untitled': 'Untitled',
+  'library.unknownAuthor': 'Unknown author',
+  'library.paragraphUnit': 'paragraphs',
+  'library.open': 'Read',
+  'library.delete': 'Remove from the shelf',
+  'library.statRead': 'Read',
+  'library.statPlayed': 'Played',
+  'library.statSpeed': 'Reading speed',
+  'library.listen': 'Listen',
+  'library.more': 'More',
+  'library.menuFrequency': 'Word frequency',
+  'library.menuDetails': 'View book details',
+  'library.coverGenerating': 'Drawing a cover…',
+  'library.coverDone': 'The cover is ready.',
+  'library.coverFailed': 'The cover could not be drawn. Please try again.',
+  'library.menuCover': 'Generate a cover',
+  'library.menuRename': 'Rename',
+  'library.menuDelete': 'Delete book',
+  'library.frequencyTitle': 'Word frequency',
+  'library.frequencyEmpty': 'There is no text to count yet.',
+  'library.detailAuthor': 'Author',
+  'library.detailFormat': 'Format',
+  'library.detailChapters': 'Chapters',
+  'library.detailParagraphs': 'Paragraphs',
+  'library.detailWords': 'Words',
+  'library.detailProgress': 'Progress',
+  'library.detailReadWords': 'Words read',
+  'library.detailReadTime': 'Time spent reading',
+  'library.detailAdded': 'Added',
+  'library.cancel': 'Cancel',
+  'library.save': 'Save',
+  'library.import': 'Import a book',
+  'library.shelfMenu': 'Shelf options',
+  'library.sortBy': 'Sort by',
+  'library.sortRecent': 'Recently read',
+  'library.sortAdded': 'Date added',
+  'library.sortTitle': 'Title',
+  'library.sortProgress': 'Progress',
+  'library.statBooks': 'Books',
+  'library.statReading': 'In progress',
+  'library.statWords': 'Words read',
+  'library.statTime': 'Time spent',
+  'library.searchPlaceholder': 'Search by title or author',
+  'library.viewLabel': 'View mode',
+  'library.viewGrid': 'Covers',
+  'library.viewList': 'List',
+  'library.noMatch': 'No book matches the search.',
+  'library.continue': 'Continue',
+  'library.bookCount': 'books',
+  'library.bookCountOne': 'book',
+  'reader.emptyTitle': 'Pick a book to start',
+  'reader.emptyHint': 'Open a book from the library tab to begin.',
+  'reader.modeListen': 'Listen',
+  'reader.modeType': 'Type',
+  'reader.modeSpeak': 'Read aloud',
+  'reader.play': 'Play',
+  'reader.stop': 'Stop',
+  'reader.previous': 'Previous sentence',
+  'reader.next': 'Next sentence',
+  'reader.repeat': 'Repeat',
+  'reader.speed': 'Speed',
+  'reader.voice': 'Voice',
+  'reader.noVoice': 'No English voice installed',
+  'reader.accuracy': 'Accuracy',
+  'reader.elapsed': 'Elapsed',
+  'reader.syncSpeech': 'Speech follows typing',
+  'reader.perMinuteWords': 'wpm',
+  'reader.perMinuteChars': 'cpm',
+  'reader.mute': 'Mute the speech',
+  'reader.unmute': 'Unmute the speech',
+  'vocab.title': 'Vocabulary',
+  'vocab.close': 'Close',
+  'vocab.known': 'Known',
+  'vocab.learning': 'Learning',
+  'vocab.toLearn': 'To learn',
+  'vocab.all': 'All',
+  'vocab.addedToday': 'Added today {n}',
+  'vocab.today': 'Today',
+  'vocab.yesterday': 'Yesterday',
+  'vocab.date': '{month}/{day}',
+  'vocab.reviewDue': 'Review due {n}',
+  'vocab.filter': 'Filter',
+  'vocab.search': 'Search a word',
+  'vocab.speak': 'Pronounce',
+  'vocab.delete': 'Delete',
+  'vocab.empty': 'The vocabulary is empty. Click any word while reading to save it.',
+  'vocab.emptyFiltered': 'No word matches this filter.',
+  'vocab.noDue': 'Nothing is due for review right now.',
+  'vocab.loading': 'Loading the vocabulary…',
+  'vocab.loadFailed': 'The vocabulary could not be read.',
+  'vocab.speechFailed': 'This environment cannot synthesize speech.',
+  'reader.clickToLookup': 'Click to look the word up',
+  'reader.speakWord': 'Pronounce',
+  'reader.addToVocab': 'Save to the vocabulary list',
+  'reader.removeFromVocab': 'Remove from the vocabulary list',
+  'reader.saveToVocab': 'Save to the vocabulary list',
+  'reader.saved': 'Saved',
+  'reader.openWordList': 'Vocabulary list',
+  'reader.wordList': 'Words',
+  'reader.copyWord': 'Copy the word',
+  'reader.close': 'Close',
+  'reader.aiLoading': 'Asking the model…',
+  'reader.aiFailed': 'The AI explanation is unavailable.',
+  'reader.replacements': 'Replacements',
+  'reader.replacementsHint': 'One rule per line: the symbol => what you type instead.',
+  'reader.words': 'words',
+  'reader.toLearn': 'to learn',
+  'reader.toolHighlight': 'Highlight',
+  'reader.toolGloss': 'Word Wise',
+  'reader.toolCloze': 'Cloze',
+  'reader.toolSettings': 'Settings',
+  'reader.scopeCloze': 'Cloze',
+  'reader.toolModes': 'Learning modes',
+  'reader.modeHighlight': 'Word highlight',
+  'reader.modeHighlightHint': 'Colour saved words by their state',
+  'reader.modeGloss': 'Word wise',
+  'reader.modeGlossHint': 'Show the meaning under a saved word',
+  'reader.modeTranslate': 'Full text translation',
+  'reader.modeTranslateHint': 'Show a Chinese translation under every paragraph',
+  'reader.modeBlur': 'Blur text',
+  'reader.modeBlurHint': 'Blur the text; tap a sentence to reveal it',
+  'reader.modeBionic': 'Bionic reading',
+  'reader.modeBionicHint': 'Bold the beginning of every word',
+  'reader.modeLimit': 'Limit look-ups',
+  'reader.modeLimitHint': 'After five look-ups on a page, rely on the context',
+  'reader.lookupsSpent': 'Look-up budget spent on this page; read the context instead',
+  'reader.tocTitle': 'Contents',
+  'reader.chapter': 'Chapter',
+  'reader.paragraph': 'Paragraph',
+  'source.title': 'Online library',
+  'source.placeholder': 'Search by title or author',
+  'source.search': 'Search',
+  'source.get': 'Get',
+  'source.downloading': 'Downloading…',
+  'source.loading': 'Loading the catalogue…',
+  'source.note': 'Public domain books from Project Gutenberg. The catalogue is downloaded once and then searched locally.',
+  'reader.recognizeFallback': 'Speech recognition is unavailable here, so the recording takes over for self-review.',
+  'reader.nothingRecognized': 'Nothing was recognised. Try again a little closer to the microphone.',
+  'reader.keyHint': '· ← → to turn the page',
+  'notes.title': 'Notes',
+  'notes.placeholder': 'Write a note about this sentence…',
+  'notes.save': 'Save note',
+  'notes.empty': 'No notes yet. Write one while reading.',
+  'notes.jump': 'Go to the sentence',
+  'notes.delete': 'Delete the note',
+  'notes.noQuote': 'The current sentence',
+  'reader.settings': 'Settings',
+  'reader.typingSettings': 'Typing settings',
+  'reader.fontStyle': 'Font style',
+  'reader.fontSans': 'Sans',
+  'reader.fontSerif': 'Serif',
+  'reader.fontMono': 'Mono',
+  'reader.fontSize': 'Font size',
+  'reader.lineHeight': 'Line height',
+  'reader.columnWidth': 'Column width',
+  'reader.columnNarrow': 'Narrow',
+  'reader.columnNormal': 'Normal',
+  'reader.columnWide': 'Wide',
+  'reader.columnFull': 'Fill the width',
+  'reader.displaySpeed': 'Speed shown',
+  'reader.speedWords': 'Words',
+  'reader.speedChars': 'Characters',
+  'reader.forgiveMistakes': 'Forgive mistakes',
+  'reader.forgiveHint': 'Move on even when the word is not matched; the wrong characters do not count towards the speed.',
+  'reader.hideInput': 'Hide the input box',
+  'reader.nextSentence': 'Next sentence',
+  'reader.nextParagraph': 'Next paragraph',
+  'reader.previousParagraph': 'Previous paragraph',
+  'reader.position': 'Paragraph {p}/{pt} · Sentence {s}/{st}',
+  'reader.scopeLabel': 'Practice unit',
+  'reader.scopeSentence': 'Sentence',
+  'reader.scopeParagraph': 'Paragraph',
+  'reader.retry': 'Try again',
+  'reader.listenOnce': 'Hear it once',
+  'reader.startReading': 'Start reading aloud',
+  'reader.stopReading': 'Stop reading',
+  'reader.startRecording': 'Record and replay',
+  'reader.replayRecording': 'Replay the recording',
+  'reader.noRecognition': 'This browser cannot recognize speech, so the recording is offered for self-review instead.',
+  'reader.transcriptEmpty': 'Nothing has been recognized yet.',
+  'reader.missingWords': 'Missed',
+  'reader.extraWords': 'Extra',
+  'reader.clickToHear': 'Click to hear this word',
+  'reader.exitBook': 'Back to the library',
+  'reader.tapWordHint': 'Click any word to hear it on its own.',
+  'reader.speakFailed': 'Speech synthesis is unavailable in this environment.',
+  'reader.recognizeFailed': 'Speech recognition failed.',
+  'reader.micHint': 'Check that the microphone is allowed and that it works.',
+  'reader.recordFailed': 'Recording is unavailable in this environment.',
+};
+
+const zh = {
+  'tab.library': '书库',
+  'tab.reader': '精读',
+  'tab.vocab': '生词本',
+  'app.crashed': '阅读器遇到问题，停止了。',
+  'app.crashHint': '你的书和笔记都还在，重新加载一般就能恢复。',
+  'app.reload': '重新加载',
+  'panel.label': '英语精读',
+  'library.loading': '正在读取本地书库…',
+  'library.dropTitle': '把电子书拖到这里，或点击选择文件',
+  'library.dropHint': 'EPUB · TXT · Markdown · HTML · PDF — 文件只留在本机',
+  'library.importing': '正在导入…',
+  'library.importFailed': '文件导入失败。',
+  'library.loadFailed': '无法读取本地书库。',
+  'library.emptyTitle': '书库还是空的',
+  'library.emptyHint': '导入一本 EPUB（或纯文本）后，就能逐句精读：听朗读、跟着语音打字、或者朗读后与原文比对。',
+  'library.untitled': '未命名',
+  'library.unknownAuthor': '未知作者',
+  'library.paragraphUnit': '段',
+  'library.open': '开始阅读',
+  'library.delete': '从书库移除',
+  'library.statRead': '阅读',
+  'library.statPlayed': '朗读',
+  'library.statSpeed': '阅读速度',
+  'library.listen': '朗读',
+  'library.more': '更多',
+  'library.menuFrequency': '词频统计',
+  'library.menuDetails': '查看详情',
+  'library.coverGenerating': '正在生成封面…',
+  'library.coverDone': '封面已生成。',
+  'library.coverFailed': '封面生成失败，请重试。',
+  'library.menuCover': '生成封面',
+  'library.menuRename': '重命名',
+  'library.menuDelete': '删除书籍',
+  'library.frequencyTitle': '词频统计',
+  'library.frequencyEmpty': '还没有正文可统计。',
+  'library.detailAuthor': '作者',
+  'library.detailFormat': '格式',
+  'library.detailChapters': '章节',
+  'library.detailParagraphs': '段落',
+  'library.detailWords': '词数',
+  'library.detailProgress': '进度',
+  'library.detailReadWords': '已读词数',
+  'library.detailReadTime': '累计阅读时长',
+  'library.detailAdded': '加入时间',
+  'library.cancel': '取消',
+  'library.save': '保存',
+  'library.import': '导入书籍',
+  'library.shelfMenu': '书架选项',
+  'library.sortBy': '排序方式',
+  'library.sortRecent': '最近阅读',
+  'library.sortAdded': '加入时间',
+  'library.sortTitle': '书名',
+  'library.sortProgress': '进度',
+  'library.statBooks': '本数',
+  'library.statReading': '在读',
+  'library.statWords': '已读词数',
+  'library.statTime': '累计时长',
+  'library.searchPlaceholder': '按书名或作者搜索',
+  'library.viewLabel': '展示方式',
+  'library.viewGrid': '缩略图',
+  'library.viewList': '列表',
+  'library.noMatch': '没有匹配的书。',
+  'library.continue': '继续阅读',
+  'library.bookCount': '本',
+  'library.bookCountOne': '本',
+  'reader.emptyTitle': '先选一本书',
+  'reader.emptyHint': '在书库页打开一本书即可开始。',
+  'reader.modeListen': '听读',
+  'reader.modeType': '打字',
+  'reader.modeSpeak': '朗读',
+  'reader.play': '播放',
+  'reader.stop': '停止',
+  'reader.previous': '上一句',
+  'reader.next': '下一句',
+  'reader.repeat': '循环',
+  'reader.speed': '语速',
+  'reader.voice': '语音',
+  'reader.noVoice': '没有可用的英文语音',
+  'reader.accuracy': '准确率',
+  'reader.elapsed': '用时',
+  'reader.syncSpeech': '语音跟随打字',
+  'reader.perMinuteWords': '词/分',
+  'reader.perMinuteChars': '字/分',
+  'reader.mute': '静音',
+  'reader.unmute': '取消静音',
+  'vocab.title': '生词本',
+  'vocab.close': '关闭',
+  'vocab.known': '已掌握',
+  'vocab.learning': '学习中',
+  'vocab.toLearn': '待学',
+  'vocab.all': '全部',
+  'vocab.addedToday': '今日新增 {n}',
+  'vocab.today': '今天',
+  'vocab.yesterday': '昨天',
+  'vocab.date': '{month}月{day}日',
+  'vocab.reviewDue': '待复习 {n}',
+  'vocab.filter': '筛选',
+  'vocab.search': '搜索单词',
+  'vocab.speak': '朗读',
+  'vocab.delete': '删除',
+  'vocab.empty': '生词本还是空的。在阅读时点击任意单词即可收藏。',
+  'vocab.emptyFiltered': '没有符合当前筛选的单词。',
+  'vocab.noDue': '暂时没有需要复习的单词。',
+  'vocab.loading': '正在读取生词本…',
+  'vocab.loadFailed': '无法读取生词本。',
+  'vocab.speechFailed': '当前环境不支持语音合成。',
+  'reader.clickToLookup': '点击查词',
+  'reader.speakWord': '朗读',
+  'reader.addToVocab': '加入生词本',
+  'reader.removeFromVocab': '从生词本移除',
+  'reader.saveToVocab': '加入生词本',
+  'reader.saved': '已收藏',
+  'reader.openWordList': '生词本',
+  'reader.wordList': '生词本',
+  'reader.copyWord': '复制单词',
+  'reader.close': '关闭',
+  'reader.aiLoading': '正在询问模型…',
+  'reader.aiFailed': 'AI 释义暂不可用。',
+  'reader.replacements': '符号替换',
+  'reader.replacementsHint': '每行一条规则：原符号 => 你实际要敲的字符。',
+  'reader.words': '词',
+  'reader.toLearn': '待学',
+  'reader.toolHighlight': '高亮生词',
+  'reader.toolGloss': '词义注释',
+  'reader.toolCloze': '填空',
+  'reader.toolSettings': '设置',
+  'reader.scopeCloze': '填空',
+  'reader.toolModes': '学习模式',
+  'reader.modeHighlight': '生词高亮',
+  'reader.modeHighlightHint': '按状态给收藏过的词上色',
+  'reader.modeGloss': '词义注释',
+  'reader.modeGlossHint': '在生词下方显示释义',
+  'reader.modeTranslate': '全文翻译',
+  'reader.modeTranslateHint': '在每段下方显示中文翻译',
+  'reader.modeBlur': '模糊文本',
+  'reader.modeBlurHint': '把正文模糊，点句子才显示',
+  'reader.modeBionic': '双速阅读',
+  'reader.modeBionicHint': '加粗每个词的开头',
+  'reader.modeLimit': '限制查词',
+  'reader.modeLimitHint': '本页查词超过 5 次后，靠上下文理解',
+  'reader.lookupsSpent': '本页查词次数用完了，试试从上下文推断',
+  'reader.tocTitle': '目录',
+  'reader.chapter': '第',
+  'reader.paragraph': '第',
+  'source.title': '在线书库',
+  'source.placeholder': '按书名或作者搜索',
+  'source.search': '搜索',
+  'source.get': '获取',
+  'source.downloading': '下载中…',
+  'source.loading': '正在载入目录…',
+  'source.note': '来自 Project Gutenberg 的公版书。目录只下载一次，之后都在本地搜索。',
+  'reader.recognizeFallback': '当前环境无法做语音识别，已切换为录音回放来自我校正。',
+  'reader.nothingRecognized': '没有识别到内容，靠近麦克风再试一次。',
+  'reader.keyHint': '· ← → 翻页',
+  'notes.title': '笔记',
+  'notes.placeholder': '给这句话写点什么…',
+  'notes.save': '保存笔记',
+  'notes.empty': '还没有笔记。读的时候随手记一条。',
+  'notes.jump': '跳到这句话',
+  'notes.delete': '删除这条笔记',
+  'notes.noQuote': '当前这句话',
+  'reader.settings': '设置',
+  'reader.typingSettings': '打字设置',
+  'reader.fontStyle': '字体',
+  'reader.fontSans': '无衬线',
+  'reader.fontSerif': '衬线',
+  'reader.fontMono': '等宽',
+  'reader.fontSize': '字号',
+  'reader.lineHeight': '行高',
+  'reader.columnWidth': '阅读宽度',
+  'reader.columnNarrow': '窄',
+  'reader.columnNormal': '标准',
+  'reader.columnWide': '宽',
+  'reader.columnFull': '满宽',
+  'reader.displaySpeed': '速度单位',
+  'reader.speedWords': '按词',
+  'reader.speedChars': '按字符',
+  'reader.forgiveMistakes': '宽容错误',
+  'reader.forgiveHint': '没打对也允许跳到下一个词；打错的字符不计入速度。',
+  'reader.hideInput': '隐藏输入框',
+  'reader.nextSentence': '下一句',
+  'reader.nextParagraph': '下一段',
+  'reader.previousParagraph': '上一段',
+  'reader.position': '第 {p}/{pt} 段 · 第 {s}/{st} 句',
+  'reader.scopeLabel': '练习范围',
+  'reader.scopeSentence': '逐句',
+  'reader.scopeParagraph': '整段',
+  'reader.retry': '重来',
+  'reader.listenOnce': '听一遍',
+  'reader.startReading': '开始朗读',
+  'reader.stopReading': '停止朗读',
+  'reader.startRecording': '录音回放',
+  'reader.replayRecording': '回放录音',
+  'reader.noRecognition': '当前环境不支持语音识别，可改用录音回放自我校正。',
+  'reader.transcriptEmpty': '还没有识别到任何内容。',
+  'reader.missingWords': '漏读',
+  'reader.extraWords': '多读',
+  'reader.clickToHear': '点击单词可单独朗读',
+  'reader.exitBook': '退出当前书籍',
+  'reader.tapWordHint': '点击任意单词即可单独听发音。',
+  'reader.speakFailed': '当前环境不支持语音合成。',
+  'reader.recognizeFailed': '语音识别失败。',
+  'reader.micHint': '请确认已允许使用麦克风，且麦克风可用。',
+  'reader.recordFailed': '当前环境不支持录音。',
+};
+
+/**
+ * The sidebar panel glyph.
+ * @param {object} props - the panel row's props: `size` and `active`.
+ * @returns {any} the element tree
+ */
+/**
+ * A render error must not leave a blank panel: the boundary shows what
+ * happened and offers a reload instead.
+ */
+function createPageBoundary(t) {
+  return class PageBoundary extends Component {
+    constructor(props) {
+      super(props);
+      this.state = { error: null };
+    }
+
+    static getDerivedStateFromError(error) {
+      return { error };
+    }
+
+    componentDidCatch(error) {
+      console.warn('[' + PLUGIN_ID + '] page failed: ' + (error instanceof Error ? error.message : String(error)));
+    }
+
+    render() {
+      const { error } = this.state;
+      if (error === null) return this.props.children;
+      const detail = error instanceof Error ? error.message : String(error);
+      const frame = typeof error?.stack === 'string'
+        ? error.stack.split('\n').find((line) => line.includes('/english-reader/')) ?? ''
+        : '';
+      return h(
+        'div',
+        { className: 'er-page er-crash' },
+        h('div', { className: 'er-crash-title' }, t('app.crashed')),
+        h('div', { className: 'er-crash-hint' }, t('app.crashHint')),
+        detail === '' ? null : h('div', { className: 'er-crash-detail' }, detail),
+        frame === '' ? null : h('div', { className: 'er-crash-frame' }, frame.trim()),
+        h(
+          'div',
+          { className: 'er-crash-actions' },
+          h(
+            'button',
+            {
+              type: 'button',
+              className: 'er-btn er-btn-primary',
+              onClick: () => { globalThis.location?.reload?.(); },
+            },
+            t('app.reload'),
+          ),
+          h(
+            'button',
+            {
+              type: 'button',
+              className: 'er-btn',
+              onClick: () => { globalThis.location?.reload?.(); },
+            },
+            t('app.reload'),
+          ),
+        ),
+      );
+    }
+  };
+}
+
+function PanelIcon(props) {
+  const size = typeof props?.size === 'number' ? props.size : 18;
+  const active = props?.active === true;
+  return h(
+    'span',
+    {
+      style: {
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: 'inherit',
+        opacity: active ? 1 : 0.62,
+      },
+    },
+    h(SoundIcon, { size }),
+  );
+}
+
+/**
+ * Install the plugin's stylesheet; the module system removes it with the plugin.
+ * @returns {() => void} the cleanup
+ */
+function installStyles() {
+  const style = document.createElement('style');
+  style.setAttribute('data-plugin', PLUGIN_ID);
+  style.textContent = STYLE;
+  document.head.appendChild(style);
+  return () => { style.remove(); };
+}
+
+/** Services this plugin needs: the slot registry and the locale seat. */
+/** When this bundle was built; the page shows it so a stale window is obvious. */
+const BUILD = typeof __ER_BUILD__ === 'string' ? __ER_BUILD__ : 'dev';
+
+export const inject = ['slots', 'locale'];
+
+/**
+ * Register the sidebar entry and the reading page.
+ * @param {object} ctx - the client plugin context.
+ */
+export function apply(ctx) {
+  const t = ctx.locale.bind(NS);
+  const PageBoundary = createPageBoundary(t);
+  // One failed registration must not abort the rest.
+  const rawEffect = ctx.effect.bind(ctx);
+  const register = (build, label) => rawEffect(() => {
+    try {
+      return build();
+    } catch (error) {
+      console.warn('[' + PLUGIN_ID + '] ' + label + ' failed: ' + (error instanceof Error ? error.message : String(error)));
+      return undefined;
+    }
+  }, label);
+
+  register(() => ctx.locale.register(NS, { zh, en }), 'english-reader: dictionaries');
+  register(() => installStyles(), 'english-reader: styles');
+  register(
+    () => ctx.slots.inject('sidebar.panellist', () => ctx.slots.register({
+      name: 'sidebar.panellist',
+      id: 'english-reader',
+      order: 20,
+      label: () => t('panel.label'),
+      locale: NS,
+    }, PanelIcon)),
+    'english-reader: panel icon',
+  );
+  register(
+    () => ctx.slots.inject('main', () => ctx.slots.register({
+      name: 'main',
+      key: 'english-reader',
+      locale: NS,
+    }, (props) => h(PageBoundary, null, h(EnglishReaderPage, { t, build: BUILD, ...props })))),
+    'english-reader: page',
+  );
+}

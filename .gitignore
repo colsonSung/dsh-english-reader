@@ -1,0 +1,22 @@
+node_modules
+node_modules/
+package-lock.json
+pnpm-lock.yaml
+*.log
+.DS_Store
+*.tgz
+
+# Build artifact of the local preview harness — rebuild it with
+# `node plugin/tools/preview/build.mjs`.
+plugin/tools/preview/preview.bundle.js
+
+# Runtime state and credentials — never commit these.
+state.json
+*.state.json
+.env
+.env.*
+*.pem
+*.key
+credentials*
+minimax.key
+gutenberg-catalog.csv

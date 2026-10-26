@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>English Reader — preview</title>
+<style>
+  /* Approximated host palette: the real values come from the Harness theme
+     tokens; this preview only needs a comparable light and dark surface. */
+  :root {
+    --dsw-alias-bg-base: rgb(249, 250, 251);
+    --dsw-alias-bg-layer-1: rgb(255, 255, 255);
+    --dsw-alias-bg-layer-2: rgb(249, 250, 251);
+    --dsw-alias-bg-layer-3: rgb(244, 245, 247);
+    --dsw-alias-border-l1: rgba(15, 17, 21, 0.10);
+    --dsw-alias-border-l2: rgba(15, 17, 21, 0.10);
+    --dsw-alias-border-l3: rgba(15, 17, 21, 0.18);
+    --dsw-alias-label-primary: #0f1115;
+    --dsw-alias-label-secondary: #61666b;
+    --dsw-alias-label-tertiary: #81858c;
+    --dsw-alias-label-dimmed: rgba(15, 17, 21, 0.30);
+    --dsw-alias-state-business-primary: #2f6feb;
+    --dsw-alias-state-error-primary: #d92d20;
+    --dsw-alias-state-success-primary: #039855;
+    --dsw-alias-state-warn-primary: #dc6803;
+    --dsw-alias-interactive-bg-hover: rgba(15, 17, 21, 0.05);
+    --dsw-radius-sm: 6px;
+    --dsw-radius-md: 8px;
+    --dsw-radius-lg: 12px;
+    --dsw-elevation-stroke: 0 0 0 0.5px rgba(15, 17, 21, 0.08);
+    --dsw-elevation-prominent: 0 12px 32px rgba(15, 17, 21, 0.16);
+  }
+  html, body { margin: 0; height: 100%; background: var(--dsw-alias-bg-base);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: var(--dsw-alias-label-primary); }
+  #reader { height: 100vh; }
+</style>
+</head>
+<body>
+  <div id="reader"></div>
+  <script src="./preview.bundle.js"></script>
+</body>
+</html>

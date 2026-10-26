@@ -4,7 +4,9 @@
  * Everything the learner uses runs in the page: file import, parsing, the
  * matching UI and the speech recognition. The Host owns the two things the
  * page cannot do safely: it holds the MiniMax API key and it talks to the
- * provider.
+ * provider. It also owns the shelf: the books, the vocabulary list, the notes
+ * and the podcasts live on disk, so that the desktop app and any browser see
+ * the same library.
  *
  * The client half posts every request to `/api/english-reader` and switches on
  * the method:
@@ -15,21 +17,26 @@
  *   - `tts`: the reading voice, synthesised by MiniMax
  *   - `voices`: the MiniMax system voices
  *   - `status`: which channels are available
+ *   - `shelf`: the persistent shelf on disk (books, vocabulary, notes,
+ *     podcasts)
  *
  * The route is registered through the Connection service's Fetch registry, so
  * the caller is authenticated with the same browser session the rest of the app
  * uses.
  */
 
+import { join } from 'node:path';
+
 import { runAiMethod, serviceOf } from './src/host/ai.js';
 import * as minimax from './src/host/minimax.js';
 import * as gutenberg from './src/host/gutenberg.js';
+import { createShelf } from './src/host/shelf.js';
 
 /** The route the client half posts its requests to. */
 export const ROUTE = '/api/english-reader';
 
 /** The methods the client half may ask for. */
-const METHODS = new Set(['word', 'translate', 'breakdown', 'mindmap', 'podcast', 'podcastReply', 'tts', 'asr', 'cover', 'voices', 'status', 'source']);
+const METHODS = new Set(['word', 'translate', 'breakdown', 'mindmap', 'podcast', 'podcastReply', 'tts', 'asr', 'cover', 'voices', 'status', 'source', 'shelf']);
 
 /**
  * Build the error body the client half understands.
@@ -42,11 +49,114 @@ function failure(code, message) {
 }
 
 /**
+ * The id of a record the client sent.
+ * @param {any} record - the record.
+ * @returns {string} the id, or an empty string when there is none.
+ */
+function idOf(record) {
+  return typeof record?.id === 'string' ? record.id : '';
+}
+
+/**
+ * Where the shelf lives: the current profile's `english-reader` folder. When the
+ * profile directory is not known, the shelf falls back to `~/.dsh/english-reader`.
+ * @param {object} ctx - the Host plugin context.
+ * @returns {{ dir?: string }} the options for createShelf.
+ */
+function shelfOptions(ctx) {
+  const profileContext = serviceOf(ctx, 'profileContext');
+  const profileDir = typeof profileContext?.dir === 'string' ? profileContext.dir : '';
+  const dir = profileDir !== '' ? join(profileDir, 'english-reader') : undefined;
+  return { dir };
+}
+
+/**
+ * Handle one shelf action (contract section 2).
+ *
+ * The shelf is the Host's own: the client asks for books, vocabulary, notes and
+ * podcasts by name, and the Host reads and writes them on disk.
+ *
+ * @param {object} shelf - the shelf.
+ * @param {object} payload - the payload of the request.
+ * @returns {Promise<Response>} the response.
+ */
+async function handleShelf(shelf, payload) {
+  const action = typeof payload?.action === 'string' ? payload.action : '';
+  if (action === 'books.list') {
+    return Response.json({ ok: true, result: await shelf.listBooks() });
+  }
+  if (action === 'books.get') {
+    const book = await shelf.getBook(payload?.id);
+    return Response.json({ ok: true, result: book ?? null });
+  }
+  if (action === 'books.put') {
+    const book = payload?.book;
+    await shelf.putBook(book);
+    return Response.json({ ok: true, result: { id: idOf(book) } });
+  }
+  if (action === 'books.progress') {
+    // The Host merges the progress into the book on disk, so the whole book
+    // does not travel over the wire on every sentence.
+    const id = typeof payload?.id === 'string' ? payload.id : '';
+    await shelf.updateProgress(id, payload?.progress);
+    return Response.json({ ok: true, result: { id } });
+  }
+  if (action === 'books.delete') {
+    const id = typeof payload?.id === 'string' ? payload.id : '';
+    await shelf.deleteBook(id);
+    return Response.json({ ok: true, result: { id } });
+  }
+  if (action === 'vocab.list') {
+    return Response.json({ ok: true, result: await shelf.listVocab() });
+  }
+  if (action === 'vocab.put') {
+    const entry = payload?.entry;
+    await shelf.putVocab(entry);
+    return Response.json({ ok: true, result: { id: idOf(entry) } });
+  }
+  if (action === 'vocab.delete') {
+    const id = typeof payload?.id === 'string' ? payload.id : '';
+    await shelf.deleteVocab(id);
+    return Response.json({ ok: true, result: { id } });
+  }
+  if (action === 'notes.list') {
+    return Response.json({ ok: true, result: await shelf.listNotes() });
+  }
+  if (action === 'notes.put') {
+    const note = payload?.note;
+    await shelf.putNote(note);
+    return Response.json({ ok: true, result: { id: idOf(note) } });
+  }
+  if (action === 'notes.delete') {
+    const id = typeof payload?.id === 'string' ? payload.id : '';
+    await shelf.deleteNote(id);
+    return Response.json({ ok: true, result: { id } });
+  }
+  if (action === 'podcasts.list') {
+    return Response.json({ ok: true, result: await shelf.listPodcasts() });
+  }
+  if (action === 'podcasts.put') {
+    const episode = payload?.episode;
+    await shelf.putPodcast(episode);
+    return Response.json({ ok: true, result: { id: idOf(episode) } });
+  }
+  if (action === 'podcasts.delete') {
+    const id = typeof payload?.id === 'string' ? payload.id : '';
+    await shelf.deletePodcast(id);
+    return Response.json({ ok: true, result: { id } });
+  }
+  return Response.json(failure('english-reader/unknown-action', `不支持的书库操作：${action}`), { status: 400 });
+}
+
+/**
  * Activate the bundle row.
  * @param {object} ctx - the Host plugin context.
  */
 export function apply(ctx) {
-  ctx.inject(['connection'], (connectionCtx) => {
+  ctx.inject(['connection', 'profileContext'], (connectionCtx) => {
+    // The shelf belongs to the Host and lives on disk, so the desktop app and
+    // every browser see the same library.
+    const shelf = createShelf(shelfOptions(connectionCtx));
     connectionCtx.effect(() => {
       try {
         return connectionCtx.connection.fetch.register({
@@ -91,6 +201,9 @@ export function apply(ctx) {
               if (method === 'voices') {
                 const voices = await minimax.voices();
                 return Response.json({ ok: true, result: voices });
+              }
+              if (method === 'shelf') {
+                return await handleShelf(shelf, payload);
               }
               if (method === 'source') {
                 const action = payload?.action === 'download' ? 'download' : 'search';

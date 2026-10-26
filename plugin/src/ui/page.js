@@ -6,11 +6,12 @@
  */
 import { Component, createElement as h, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { parseBook } from '../lib/parsers/index.js';
-import { coverToDataUrl, generateCover } from '../lib/cover.js';
+import { coverToDataUrl, generateCover as drawPlaceholderCover } from '../lib/cover.js';
 import { buildUnits } from '../lib/engine/segment.js';
 import { askAi } from '../lib/ai.js';
-import { deleteBook, listBooks, newBookId, saveBook, updateProgress } from '../lib/store.js';
+import { deleteBook, getBook, listBooks, newBookId, saveBook, updateProgress } from '../lib/store.js';
 import { LibraryView } from './library.js';
+import { ImportCard } from './import-card.js';
 import { OnlineLibrary } from './online-library.js';
 import { ReaderView } from './reader.js';
 import { WordList } from './wordlist.js';
@@ -40,6 +41,9 @@ class SectionBoundary extends Component {
   render() {
     const { error } = this.state;
     if (error === null) return this.props.children;
+    // The translator comes in as a prop: this class has no `t` of its own, and
+    // reaching for one would throw a second error that hides the first.
+    const { t } = this.props;
     const detail = error instanceof Error ? error.message : String(error);
     const frame = typeof error?.stack === 'string'
       ? error.stack.split('\n').find((line) => line.includes('/english-reader/')) ?? ''
@@ -67,6 +71,14 @@ class SectionBoundary extends Component {
 const VIEW_KEY = 'english-reader:library-view';
 
 /**
+ * How long the import card stays on screen at least.
+ *
+ * A fast TXT import finishes in a few dozen milliseconds; without a floor the
+ * card would flash and vanish, which reads as a glitch rather than as progress.
+ */
+const MIN_IMPORT_VISIBLE_MS = 700;
+
+/**
  * Read the stored shelf view mode.
  * @returns {'grid'|'list'}
  */
@@ -90,7 +102,7 @@ export function EnglishReaderPage({ t, build }) {
   const [activeBookId, setActiveBookId] = useState(null);
   const [units, setUnits] = useState([]);
   const [index, setIndex] = useState(0);
-  const [busy, setBusy] = useState(false);
+  const [importProgress, setImportProgress] = useState(null);
   const [error, setError] = useState('');
   const [loaded, setLoaded] = useState(false);
   const [wordListOpen, setWordListOpen] = useState(false);
@@ -101,6 +113,8 @@ export function EnglishReaderPage({ t, build }) {
   const [sourceOpen, setSourceOpen] = useState(false);
   const fileRef = useRef(null);
   const saveTimer = useRef(null);
+  const importStartedAt = useRef(0);
+  const importHideTimer = useRef(null);
 
   const refresh = useCallback(async () => {
     try {
@@ -134,11 +148,15 @@ export function EnglishReaderPage({ t, build }) {
   }, [activeBookId, index, units]);
 
   // Ask the model for a cover; the shelf keeps working while it is drawn.
-  const generateCover = useCallback(async (book) => {
+  const generateAiCover = useCallback(async (book) => {
     try {
       const result = await askAi('cover', { title: book.title });
       if (typeof result?.url !== 'string' || result.url === '') return false;
-      await saveBook({ ...book, cover: result.url });
+      // The book may have been renamed or deleted while the cover was drawn,
+      // so the stored copy is read again instead of the one we started with.
+      const stored = await getBook(book.id);
+      if (stored === undefined) return false;
+      await saveBook({ ...stored, cover: result.url });
       await refresh();
       return true;
     } catch {
@@ -146,17 +164,68 @@ export function EnglishReaderPage({ t, build }) {
     }
   }, [refresh]);
 
-  const importOne = useCallback(async (file, fallback) => {
-    const parsed = await parseBook(file);
+  // The import card is cleared at the end of an import, but not before it has
+  // been on screen long enough to be read.
+  const clearImportProgress = useCallback(() => {
+    if (importHideTimer.current !== null) {
+      window.clearTimeout(importHideTimer.current);
+      importHideTimer.current = null;
+    }
+    const elapsed = Date.now() - importStartedAt.current;
+    const wait = Math.max(0, MIN_IMPORT_VISIBLE_MS - elapsed);
+    if (wait === 0) {
+      setImportProgress(null);
+      return;
+    }
+    importHideTimer.current = window.setTimeout(() => {
+      importHideTimer.current = null;
+      setImportProgress(null);
+    }, wait);
+  }, []);
+
+  useEffect(() => () => {
+    if (importHideTimer.current !== null) window.clearTimeout(importHideTimer.current);
+  }, []);
+
+  // The progress of one file. The stages are reported as they happen, and the
+  // ratio inside a stage moves the bar. Reports that say the same thing twice
+  // are dropped: a 300 page PDF would otherwise re-render the page 300 times.
+  const makeReporter = useCallback((file, index, total) => {
+    let lastKey = '';
+    return (patch) => {
+      const key = `${patch.stage}:${Math.round((patch.ratio ?? 0) * 100)}`;
+      if (key === lastKey) return;
+      lastKey = key;
+      setImportProgress((previous) => {
+        if (previous === null) return previous;
+        return {
+          ...previous,
+          ...patch,
+          name: file?.name ?? '',
+          index,
+          total,
+          detail: patch.detail ?? null,
+        };
+      });
+    };
+  }, []);
+
+  const importOne = useCallback(async (file, fallback, report) => {
+    report({ stage: 'read', ratio: 0 });
+    const parsed = await parseBook(file, (info) => {
+      report({ stage: 'parse', ratio: info.ratio, detail: info });
+    });
     // A book that carries its own picture keeps it; the others get a drawn
     // placeholder first and an AI cover afterwards.
     const hasRealCover = parsed.cover !== null && parsed.cover !== undefined;
+    report({ stage: 'cover', ratio: 0 });
     let cover = null;
     try {
-      cover = await coverToDataUrl(parsed.cover ?? null) ?? await generateCover(parsed.title, parsed.author);
+      cover = await coverToDataUrl(parsed.cover ?? null) ?? await drawPlaceholderCover(parsed.title, parsed.author);
     } catch {
       cover = null;
     }
+    report({ stage: 'cover', ratio: 1 });
     const book = {
       id: newBookId(),
       title: parsed.title || fallback?.title || '',
@@ -167,47 +236,55 @@ export function EnglishReaderPage({ t, build }) {
       addedAt: Date.now(),
       progress: { unitIndex: 0, chapterIndex: 0, percent: 0 },
     };
+    report({ stage: 'save', ratio: 0 });
     await saveBook(book);
+    report({ stage: 'save', ratio: 1 });
     return { book, hasRealCover };
   }, []);
 
   const onFiles = useCallback(async (files) => {
-    setBusy(true);
+    const list = Array.from(files ?? []);
+    if (list.length === 0) return;
     setError('');
+    importStartedAt.current = Date.now();
+    setImportProgress({ name: list[0]?.name ?? '', index: 0, total: list.length, stage: 'read', ratio: 0, detail: null });
     try {
       const imported = [];
-      for (const file of files) {
-        imported.push(await importOne(file, null));
+      for (let index = 0; index < list.length; index += 1) {
+        const file = list[index];
+        const report = makeReporter(file, index, list.length);
+        imported.push(await importOne(file, null, report));
       }
       await refresh();
-      setBusy(false);
       // 书里没有自带封面的，让模型画一张；书先入库，封面随后补上
       for (const entry of imported) {
         if (entry === null || entry.hasRealCover) continue;
-        void generateCover(entry.book);
+        void generateAiCover(entry.book);
       }
     } catch (importError) {
       setError(importError?.message ?? t('library.importFailed'));
     } finally {
-      setBusy(false);
+      clearImportProgress();
     }
-  }, [generateCover, importOne, refresh, t]);
+  }, [clearImportProgress, generateAiCover, importOne, makeReporter, refresh, t]);
 
   // A book that came from the online source arrives with its catalogue entry.
   const onImported = useCallback(async (file, hit) => {
-    setBusy(true);
     setError('');
+    importStartedAt.current = Date.now();
+    setImportProgress({ name: file?.name ?? hit?.title ?? '', index: 0, total: 1, stage: 'read', ratio: 0, detail: null });
     try {
-      const entry = await importOne(file, hit);
+      const report = makeReporter(file, 0, 1);
+      const entry = await importOne(file, hit, report);
       await refresh();
       setSourceOpen(false);
-      if (entry !== null && !entry.hasRealCover) void generateCover(entry.book);
+      if (entry !== null && !entry.hasRealCover) void generateAiCover(entry.book);
     } catch (importError) {
       setError(importError?.message ?? t('library.importFailed'));
     } finally {
-      setBusy(false);
+      clearImportProgress();
     }
-  }, [importOne, refresh, t]);
+  }, [clearImportProgress, generateAiCover, importOne, makeReporter, refresh, t]);
 
   // The shelf asks the reader to start reading aloud.
   const [autoPlayToken, setAutoPlayToken] = useState(0);
@@ -303,7 +380,8 @@ export function EnglishReaderPage({ t, build }) {
   return h(
     'div',
     {
-      className: 'er-page',
+      // The import card floats over the body, so the body gets room for it.
+      className: importProgress === null ? 'er-page' : 'er-page is-importing',
       onDragOver: (event) => { event.preventDefault(); },
       onDrop: (event) => {
         event.preventDefault();
@@ -385,13 +463,12 @@ export function EnglishReaderPage({ t, build }) {
     h(
       'div',
       { className: 'er-body' },
-      h(SectionBoundary, null,
+      h(SectionBoundary, { t },
         tab === 'library'
         ? h(LibraryView, {
           t,
           books: sorted,
           build,
-          busy,
           error,
           view,
           onViewChange: changeView,
@@ -403,7 +480,7 @@ export function EnglishReaderPage({ t, build }) {
           onGenerateCover: (id) => {
             const book = books.find((entry) => entry.id === id);
             if (book === undefined) return Promise.resolve(false);
-            return generateCover(book);
+            return generateAiCover(book);
           },
         })
         : tab === 'reader'
@@ -453,6 +530,8 @@ export function EnglishReaderPage({ t, build }) {
         if (files.length > 0) void onFiles(files);
       },
     }),
+    // The import card: what is being imported, and how far it has come.
+    h(ImportCard, { t, progress: importProgress }),
     wordListOpen
       ? h(WordList, {
         t,

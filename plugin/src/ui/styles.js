@@ -360,7 +360,7 @@ export const STYLE = `
 
 /* The column width follows the setting; the reading area never gets wider
    than the window. */
-.er-reading-page{display:flex;flex-direction:column;gap:14px;max-width:var(--er-column-width,74ch);margin:0 auto;width:100%}
+.er-reading-page{display:flex;flex-direction:column;gap:10px;max-width:var(--er-column-width,74ch);margin:0 auto;width:100%}
 /* The reading surface leans on size and colour, not on boxes: the paragraph
    being read is large and dark, the ones around it are smaller and quiet. */
 .er-page-paragraph{margin:0}
@@ -369,12 +369,16 @@ export const STYLE = `
 .er-page-paragraph.is-active{font-size:var(--er-text-size, 19px);line-height:2;color:var(--dsw-alias-label-primary)}
 .er-sentence.is-active-sentence{background:var(--dsw-alias-bg-layer-2);border-radius:4px;box-shadow:0 0 0 3px var(--dsw-alias-bg-layer-2)}
 
-/* Every paragraph carries a column of buttons in its right gutter: take a
-   note, translate it, read it aloud. The text keeps its own column; the
-   buttons only take the gutter next to it. */
+/* Every paragraph carries a row of buttons in its right gutter: take a note,
+   translate it, read it aloud. The text keeps its own column; the buttons only
+   take the gutter next to it.
+   The buttons lie in one row, not in a column: a column of three is taller
+   than a single line of text, so it would stretch every short paragraph and
+   leave a hole under it. A row is as tall as one line, so the paragraph keeps
+   the height of its own text. */
 .er-paragraph-row{display:flex;align-items:flex-start;gap:10px}
 .er-paragraph-main{flex:1;min-width:0}
-.er-paragraph-actions{flex:none;display:flex;flex-direction:column;align-items:center;gap:2px}
+.er-paragraph-actions{flex:none;display:flex;flex-direction:row;align-items:center;gap:2px}
 .er-paragraph-action{position:relative;flex:none;display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;padding:0;border:0;border-radius:8px;background:transparent;color:var(--dsw-alias-label-tertiary);cursor:pointer;transition:opacity .15s ease,color .15s ease,background-color .15s ease}
 /* The buttons wait for the pointer: they are hidden until the paragraph is
    hovered (or the button itself is focused). A touch screen has no hover,
@@ -514,5 +518,21 @@ export const STYLE = `
 .er-notes-empty{padding:22px 8px;text-align:center;font-size:12.5px;color:var(--dsw-alias-label-tertiary)}
 .er-notes-button{position:relative;width:28px;height:28px;flex:none}
 .er-notes-badge{position:absolute;top:-4px;right:-4px;min-width:15px;height:15px;padding:0 3px;border-radius:8px;background:var(--dsw-alias-state-warn-primary);color:var(--dsw-alias-bg-base);font-size:9.5px;line-height:15px;text-align:center}
+
+
+/* The import card: a toast at the bottom of the panel that says what the
+   import is doing. It floats over the shelf, so the body gets extra room
+   while it is up — the card must never hide a book. */
+.er-page.is-importing .er-body{padding-bottom:112px}
+.er-import{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);z-index:1300;box-sizing:border-box;display:flex;align-items:flex-start;gap:10px;width:min(420px,calc(100% - 32px));padding:11px 14px;border-radius:var(--dsw-radius-lg,12px);background:var(--dsw-alias-bg-overlay);border:1px solid var(--dsw-alias-border-l1);box-shadow:var(--dsw-elevation-prominent);pointer-events:none}
+.er-import-spinner{width:16px;height:16px;margin-top:2px;flex:none;border-radius:50%;border:2px solid var(--dsw-alias-state-business-primary);border-top-color:transparent;animation:er-spin .8s linear infinite}
+.er-import-body{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
+.er-import-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.er-import-label{font-size:12.5px;font-weight:600;color:var(--dsw-alias-label-primary)}
+.er-import-count{font-size:11.5px;color:var(--dsw-alias-label-tertiary);font-variant-numeric:tabular-nums}
+.er-import-file{font-size:12px;color:var(--dsw-alias-label-secondary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.er-import-track{height:4px;border-radius:2px;background:var(--dsw-alias-bg-layer-3);overflow:hidden}
+.er-import-bar{display:block;height:100%;border-radius:2px;background:var(--dsw-alias-state-business-primary);transition:width .25s ease}
+.er-import-stage{font-size:11.5px;color:var(--dsw-alias-label-tertiary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
 `;

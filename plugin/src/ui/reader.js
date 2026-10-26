@@ -1589,7 +1589,7 @@ export function ReaderView({
     } catch (error) {
       setTtsNote(engineMessage(error, `${t('reader.recordFailed')} ${t('reader.micHint')}`));
     }
-  }, [paragraph.text, scope, t, unit.text]);
+  }, [paragraph.text, scope, t, unit?.text]);
 
   const stopRecording = useCallback(() => {
     recorderRef.current?.stop?.();

@@ -94,7 +94,6 @@ export function Modal({ title, onClose, children, size = 'default' }) {
  * @param {object} props
  * @param {Function} props.t - translator
  * @param {object[]} props.books - the stored books
- * @param {boolean} props.busy
  * @param {string} props.error
  * @param {Function} props.onFiles
  * @param {Function} props.onOpen
@@ -106,7 +105,7 @@ export function Modal({ title, onClose, children, size = 'default' }) {
  * @returns {any} the element tree
  */
 export function LibraryView({
-  t, books, busy, error, onFiles, onOpen, onDelete, onRename, onGenerateCover,
+  t, books, error, onFiles, onOpen, onDelete, onRename, onGenerateCover,
   view, onViewChange, onListen, build,
 }) {
   const [query, setQuery] = useState('');

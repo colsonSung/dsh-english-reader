@@ -3,14 +3,17 @@
  *
  * An episode is the script of one chapter: the two-host dialogue the model
  * wrote for it. The audio itself is never stored — it is synthesised line by
- * line while the episode plays, so the local database holds a few kilobytes of
- * text instead of megabytes of sound.
+ * line while the episode plays, so the shelf holds a few kilobytes of text
+ * instead of megabytes of sound.
  *
- * Everything lives in the local database, so an episode survives a reload and
- * never leaves the machine.
+ * The scripts live on the Host, so an episode is the same in the application
+ * and in the browser; while the Host has no shelf yet they stay in the
+ * browser's own database.
  */
 
-import { PODCAST_STORE_NAME, withStore } from './store.js';
+import { callShelf, SHELF_UNAVAILABLE } from './remote.js';
+import { isHostShelfAvailable, noteHostShelfUnavailable } from './store.js';
+import { PODCAST_STORE_NAME, withStore } from './local-store.js';
 
 /**
  * @typedef {object} PodcastLine
@@ -68,7 +71,7 @@ let backendOverride = null;
 /**
  * Replace the backend the episodes are read from and written to.
  *
- * @param {{list: Function, get: Function, put: Function, remove: Function}|null} backend - the backend, or null to restore the local database.
+ * @param {{list: Function, get: Function, put: Function, remove: Function}|null} backend - the backend, or null to restore the default one.
  * @returns {void}
  */
 export function setPodcastsBackend(backend) {
@@ -76,17 +79,82 @@ export function setPodcastsBackend(backend) {
 }
 
 /**
- * The backend the episodes are read from and written to.
+ * The backend that keeps the episodes in the browser's own database.
  *
+ * It is the fallback for the times when the Host has no shelf yet.
  * @returns {{list: Function, get: Function, put: Function, remove: Function}} the backend.
  */
-function defaultBackend() {
-  if (backendOverride !== null) return backendOverride;
+function createLocalBackend() {
   return {
     list: async () => (await withStore('readonly', (store) => store.getAll(), PODCAST_STORE_NAME)) ?? [],
     get: async (id) => withStore('readonly', (store) => store.get(id), PODCAST_STORE_NAME),
     put: async (episode) => { await withStore('readwrite', (store) => store.put(episode), PODCAST_STORE_NAME); },
     remove: async (id) => { await withStore('readwrite', (store) => store.delete(id), PODCAST_STORE_NAME); },
+  };
+}
+
+/**
+ * The backend the episodes are read from and written to.
+ *
+ * The Host holds the truth; the browser's own table is only used while the
+ * Host has no shelf, which is the window between refreshing the page and
+ * restarting the application.
+ *
+ * @returns {{list: Function, get: Function, put: Function, remove: Function}} the backend.
+ */
+function defaultBackend() {
+  if (backendOverride !== null) return backendOverride;
+  const local = createLocalBackend();
+  return {
+    list: async () => {
+      if (!isHostShelfAvailable()) return local.list();
+      try {
+        const episodes = await callShelf('podcasts.list');
+        return Array.isArray(episodes) ? episodes : [];
+      } catch (error) {
+        if (error?.code !== SHELF_UNAVAILABLE) throw error;
+        noteHostShelfUnavailable();
+        return local.list();
+      }
+    },
+    get: async (id) => {
+      if (!isHostShelfAvailable()) return local.get(id);
+      try {
+        const episodes = await callShelf('podcasts.list');
+        const found = (Array.isArray(episodes) ? episodes : []).find((episode) => episode?.id === id);
+        return found ?? undefined;
+      } catch (error) {
+        if (error?.code !== SHELF_UNAVAILABLE) throw error;
+        noteHostShelfUnavailable();
+        return local.get(id);
+      }
+    },
+    put: async (episode) => {
+      if (!isHostShelfAvailable()) {
+        await local.put(episode);
+        return;
+      }
+      try {
+        await callShelf('podcasts.put', { episode });
+      } catch (error) {
+        if (error?.code !== SHELF_UNAVAILABLE) throw error;
+        noteHostShelfUnavailable();
+        await local.put(episode);
+      }
+    },
+    remove: async (id) => {
+      if (!isHostShelfAvailable()) {
+        await local.remove(id);
+        return;
+      }
+      try {
+        await callShelf('podcasts.delete', { id });
+      } catch (error) {
+        if (error?.code !== SHELF_UNAVAILABLE) throw error;
+        noteHostShelfUnavailable();
+        await local.remove(id);
+      }
+    },
   };
 }
 

@@ -2,15 +2,17 @@
 
 Import an ebook, then read it sentence by sentence — **listen to it**, **type
 along with the speech**, or **read aloud and check the transcript**. Your
-books stay on your machine.
+books stay on your machine, in one library that the desktop app and every
+browser share.
 
 The plugin adds an **English Reader** panel to the left sidebar of the
 DeepSeek Harness. Everything the learner uses runs in the page: the file
 import, the parsing, the matching UI and the speech recognition.
 
 > 中文说明：导入 EPUB / TXT / Markdown / HTML / PDF 后逐句精读——听朗读、跟着
-> 同步语音打字、或朗读后与原文比对。书存在浏览器 IndexedDB，文件不出本机。
-> 完整的中文技术文档见 [`plugin/README.md`](plugin/README.md)。
+> 同步语音打字、或朗读后与原文比对。**书库由宿主托管并落盘**，桌面应用与浏览器
+> 共用同一批书，文件不出本机。完整的中文技术文档见
+> [`plugin/README.md`](plugin/README.md)。
 
 ![the reader](docs/reader.png)
 
@@ -28,7 +30,7 @@ import, the parsing, the matching UI and the speech recognition.
 | **Vocabulary** | star a word to keep it: a drawer with a progress ring (known / learning / to learn), today's additions, search and filters |
 | **Spaced review** | a saved word enters the review queue immediately, scheduled 1 / 2 / 4 / 7 / 15 / 30 days out |
 | **Online library** | search Project Gutenberg and import a public-domain book without leaving the app |
-| **Notes** | a note per sentence, kept next to the book in the local database |
+| **Notes** | a note per sentence, kept next to the book in the Host's shelf |
 
 ## The library
 
@@ -97,15 +99,16 @@ cached under `~/.dsh/english-reader/` for seven days.
 
 The plugin has two halves.
 
-The **client half** is the panel: it parses the file in the page, stores the
-book in IndexedDB, renders the shelf and the reader, and drives the Web
-Speech APIs. It registers one sidebar panel icon and one main page.
+The **client half** is the panel: it parses the file in the page, reads and
+writes the shelf through the Host, renders the shelf and the reader, and
+drives the Web Speech APIs. It registers one sidebar panel icon and one main
+page.
 
-The **host half** owns the two things a page cannot do safely: it holds the
-API key, and it talks to the provider. It registers one route,
-`/api/english-reader`, through the Connection service's Fetch registry, so
-the caller is authenticated with the same browser session the rest of the
-application uses:
+The **host half** owns the three things a page cannot do safely: it holds the
+API key, it talks to the provider, and it owns the library on disk. It
+registers one route, `/api/english-reader`, through the Connection service's
+Fetch registry, so the caller is authenticated with the same browser session
+the rest of the application uses:
 
 | Method | What it does |
 | --- | --- |
@@ -116,6 +119,40 @@ application uses:
 | `voices` | the available voices |
 | `status` | which channels are available |
 | `source` | the Gutenberg catalog search and download |
+| `shelf` | the library itself: books, vocabulary, notes and podcasts |
+
+## Where the library lives
+
+The shelf belongs to the Host and is written to disk under the profile:
+
+```
+<profileDir>/english-reader/
+├── books/<bookId>.json      one file per book, the whole record
+├── vocabulary.json
+├── notes.json
+└── podcasts.json
+```
+
+It used to live in the browser's IndexedDB, and that was a trap: IndexedDB is
+scoped per origin, so the desktop app (`dsh-app://app`), a browser tab
+(`http://127.0.0.1:<port>`) and the next run of the app (a **different port**)
+each had their own, unrelated library. The books were never lost — they were
+in another origin's storage. Now the Host owns them: every window sees the
+same shelf, across browsers, ports and restarts.
+
+Writes are atomic (write a `.tmp`, then rename), a corrupt file is skipped
+rather than fatal, and records are stored as they are — the Host never drops
+a field it does not know. Writing the reading position travels as a progress
+patch, so a few bytes cross the wire instead of the whole book on every
+sentence.
+
+A browser that still holds books hands them over the first time the plugin
+loads: the Host takes a collection only when it has none of it, so a book you
+deleted does not come back. The browser's own IndexedDB stays as the fallback
+for a Host that has not been restarted yet.
+
+The full protocol is in
+[`plugin/docs/CONTRACT-SHELF.md`](plugin/docs/CONTRACT-SHELF.md).
 
 ## Preview harness
 
@@ -124,13 +161,17 @@ preview mounts the real page component with a mock client context and a
 seeded shelf:
 
 ```bash
-cd plugin/tools/preview
-node build.mjs            # → preview.bundle.js
+cd plugin
+node tools/preview/build.mjs    # → tools/preview/preview.bundle.js
+cd tools/preview
 python3 -m http.server 8080
 # then open http://localhost:8080/   (add ?view=reader for the reading page)
 ```
 
-IndexedDB needs a real origin, so the preview must be served over http.
+There is no Host in the preview, so the demo shelf is seeded into the
+browser's IndexedDB — exactly the fallback the reader uses when the Host has
+no shelf yet. IndexedDB needs a real origin, so the preview must be served
+over http.
 
 ## Build and test
 
@@ -138,7 +179,7 @@ IndexedDB needs a real origin, so the preview must be served over http.
 cd plugin
 pnpm install
 node build.mjs                 # → client.js and client.pdf.js
-node --test tests/*.test.mjs    # 155 passing
+node --test tests/*.test.mjs    # 257 passing
 ```
 
 `client.js` and `client.pdf.js` are the shipped browser bundles and are
@@ -155,10 +196,10 @@ also means `client.js` is **not** byte-reproducible across builds.
 plugin/              the DeepSeek Harness bundle
   index.js           the Host half: the /api/english-reader route
   src/client-entry.js  the client half: panel icon, page, dictionaries
-  src/host/          the Host services: AI, MiniMax, Gutenberg
-  src/lib/           parsers, the reading engine, the local store
+  src/host/          the Host services: the shelf on disk, AI, MiniMax, Gutenberg
+  src/lib/           parsers, the reading engine, the shelf client and its fallback
   src/ui/            the shelf, the reader, the word card, the vocabulary
-  tests/             155 tests over the parsers, the engine and the UI
+  tests/             257 tests over the parsers, the engine, the shelf and the UI
   tools/preview/     a standalone harness that renders the reader
 docs/                screenshots
 install.sh           installs the bundle into a profile
@@ -176,6 +217,14 @@ install.sh           installs the bundle into a profile
 * **MOBI / AZW3 / FB2** are not supported: there is no reliable pure-frontend
   parser for them, so the import is refused with a clear message.
 * A book with one chapter is listed by paragraph instead of by chapter.
+* **The Host half needs a restart.** The shelf is served by the Host, so a
+  change to `plugin/index.js` or `plugin/src/host/` only takes effect after
+  the Harness is restarted. Until then the client falls back to the browser's
+  own IndexedDB — the reader keeps working, the shelf is just not shared yet.
+* **`shelf` lists whole books.** The shelf view needs the text to count words
+  and words frequencies, so `books.list` returns every book in full. That is
+  fine for a handful of books and gets slow with a large library; writing the
+  reading position travels as a progress patch and is not affected.
 
 ## License
 

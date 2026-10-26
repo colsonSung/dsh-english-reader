@@ -6,13 +6,17 @@
  * running Harness. The prose below is written for the demo; it is not taken
  * from any book.
  *
+ * The shelf lives in the Host in a real installation. There is no Host here,
+ * so the preview seeds the browser's own IndexedDB — which is exactly the
+ * fallback the reader uses when the Host has no shelf yet.
+ *
  * IndexedDB needs a real origin, so serve the folder over http:
  *   python3 -m http.server 8080   # then open http://localhost:8080/
  */
 import { createElement as h } from 'react';
 import { createRoot } from 'react-dom/client';
 import { apply } from '../../src/client-entry.js';
-import { saveBook, withStore, VOCAB_STORE_NAME } from '../../src/lib/store.js';
+import { saveBook, withStore, VOCAB_STORE_NAME } from '../../src/lib/local-store.js';
 
 const NS = 'englishReader';
 

@@ -50,7 +50,14 @@ function resolveFormat(file) {
 /**
  * Parse a book into chapters and paragraphs.
  *
+ * `onProgress` is optional and is called while the book is being read: it
+ * receives `{ ratio, current, total, unit }`, where `ratio` is the share of
+ * the parse that is done and `unit` names what is being counted (`page` for a
+ * PDF, `chapter` for an EPUB). A format that cannot be counted reports once
+ * before and once after the work.
+ *
  * @param {any} file - a browser `File`/`Blob` with a name and a type
+ * @param {Function} [onProgress] - the progress callback
  * @returns {Promise<{ title: string, author: string, format: string, chapters: object[] }>}
  */
 /**
@@ -91,31 +98,32 @@ export function stripBoilerplate(chapters) {
   }));
 }
 
-export async function parseBook(file) {
+export async function parseBook(file, onProgress = null) {
   if (!file) {
     throw new Error('没有选择文件');
   }
   const format = resolveFormat(file);
+  const report = typeof onProgress === 'function' ? onProgress : () => {};
 
   let book;
   switch (format) {
     case 'epub':
-      book = await parseEpub(file);
-      break;
-    case 'txt':
-      book = await parseTxt(file);
-      break;
-    case 'md':
-      book = await parseMarkdown(file);
-      break;
-    case 'html':
-      book = await parseHtml(file);
+      book = await parseEpub(file, { onProgress: report });
       break;
     case 'pdf':
-      book = await parsePdf(await readAsBytes(file));
+      book = await parsePdf(await readAsBytes(file), { onProgress: report });
       break;
-    default:
-      throw new Error(`不支持的文件格式「${format}」，请选择 EPUB、TXT、Markdown、HTML 或 PDF 文件`);
+    default: {
+      // The plain formats are read and split in one go; there is nothing to
+      // count, so the caller only learns that the work started and finished.
+      report({ ratio: 0, current: 0, total: 1, unit: null });
+      if (format === 'txt') book = await parseTxt(file);
+      else if (format === 'md') book = await parseMarkdown(file);
+      else if (format === 'html') book = await parseHtml(file);
+      else throw new Error(`不支持的文件格式「${format}」，请选择 EPUB、TXT、Markdown、HTML 或 PDF 文件`);
+      report({ ratio: 1, current: 1, total: 1, unit: null });
+      break;
+    }
   }
 
   const chapters = book.chapters ?? [];

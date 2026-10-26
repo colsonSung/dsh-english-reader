@@ -157,12 +157,17 @@ export function linesToParagraphs(lines) {
 /**
  * Parse a PDF into one chapter per page.
  *
+ * A PDF is walked page by page, so the parser can say how far it is: the
+ * progress callback receives `{ ratio, current, total, unit: 'page' }` after
+ * every page.
+ *
  * @param {ArrayBuffer | Uint8Array} arrayBuffer
- * @param {{ loadChunk?: (path: string) => Promise<any> }} [options]
+ * @param {{ loadChunk?: (path: string) => Promise<any>, onProgress?: Function }} [options]
  * @returns {Promise<{ title: string, author: string, format: string, chapters: object[] }>}
  */
 export async function parsePdf(arrayBuffer, options = {}) {
   const loader = options.loadChunk ?? loadChunk;
+  const report = typeof options.onProgress === 'function' ? options.onProgress : () => {};
   let pdfjs;
   try {
     pdfjs = await loader('./client.pdf.js');
@@ -201,6 +206,7 @@ export async function parsePdf(arrayBuffer, options = {}) {
 
   const chapters = [];
   const pageCount = Number(document.numPages) || 0;
+  report({ ratio: 0, current: 0, total: pageCount, unit: 'page' });
   for (let number = 1; number <= pageCount; number += 1) {
     let content;
     try {
@@ -213,6 +219,7 @@ export async function parsePdf(arrayBuffer, options = {}) {
       title: `第 ${number} 页`,
       paragraphs: linesToParagraphs(itemsToLines(content?.items)),
     });
+    report({ ratio: number / pageCount, current: number, total: pageCount, unit: 'page' });
   }
 
   const withText = chapters.filter((chapter) => chapter.paragraphs.length > 0);

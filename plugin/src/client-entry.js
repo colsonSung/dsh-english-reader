@@ -9,6 +9,7 @@ import { Component, createElement as h } from 'react';
 import { BookIcon } from './ui/icons.js';
 import { STYLE } from './ui/styles.js';
 import { EnglishReaderPage } from './ui/page.js';
+import { shelfReady } from './lib/store.js';
 
 const NS = 'englishReader';
 const PLUGIN_ID = '@local/english-reader';
@@ -25,6 +26,12 @@ const en = {
   'library.dropTitle': 'Drop an ebook here, or click to choose a file',
   'library.dropHint': 'EPUB · TXT · Markdown · HTML · PDF — the file stays on this machine',
   'library.importing': 'Importing…',
+  'library.importStage.read': 'Reading the file',
+  'library.importStage.parse': 'Parsing the text',
+  'library.importStage.cover': 'Preparing the cover',
+  'library.importStage.save': 'Saving to the shelf',
+  'library.importPages': 'Page {current} of {total}',
+  'library.importChapters': 'Chapter {current} of {total}',
   'library.importFailed': 'The file could not be imported.',
   'library.loadFailed': 'The local shelf could not be read.',
   'library.emptyTitle': 'No books yet',
@@ -290,6 +297,12 @@ const zh = {
   'library.dropTitle': '把电子书拖到这里，或点击选择文件',
   'library.dropHint': 'EPUB · TXT · Markdown · HTML · PDF — 文件只留在本机',
   'library.importing': '正在导入…',
+  'library.importStage.read': '读取文件',
+  'library.importStage.parse': '解析正文',
+  'library.importStage.cover': '准备封面',
+  'library.importStage.save': '写入书库',
+  'library.importPages': '第 {current}/{total} 页',
+  'library.importChapters': '第 {current}/{total} 章',
   'library.importFailed': '文件导入失败。',
   'library.loadFailed': '无法读取本地书库。',
   'library.emptyTitle': '书库还是空的',
@@ -664,6 +677,15 @@ export function apply(ctx) {
 
   register(() => ctx.locale.register(NS, { zh, en }), 'english-reader: dictionaries');
   register(() => installStyles(), 'english-reader: styles');
+
+  // Hand the books this browser still keeps over to the Host as soon as the
+  // plugin loads. Waiting for the panel to open would leave the books in a
+  // browser's private storage until the learner happened to click the icon —
+  // and the browser's storage is exactly where they go missing.
+  register(() => {
+    void shelfReady();
+    return undefined;
+  }, 'english-reader: shelf handover');
   register(
     () => ctx.slots.inject('sidebar.panellist', () => ctx.slots.register({
       name: 'sidebar.panellist',

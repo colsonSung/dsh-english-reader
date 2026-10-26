@@ -26,6 +26,35 @@ import {
 } from './dom.js';
 import { fileTitle, readAsBytes } from './source.js';
 
+/** How many chapters are parsed between two yields to the browser. */
+const PAINT_EVERY = 8;
+
+/**
+ * Hand the main thread back for one frame.
+ *
+ * The chapter loop is synchronous, so without a yield every progress report
+ * piles up and the learner sees nothing until the whole book is parsed. A
+ * MessageChannel task is the cheapest way to let the browser paint — a timer
+ * would cost four milliseconds per yield.
+ *
+ * @returns {Promise<void>}
+ */
+function yieldToPaint() {
+  return new Promise((resolve) => {
+    try {
+      if (typeof MessageChannel === 'function') {
+        const channel = new MessageChannel();
+        channel.port1.onmessage = () => { channel.port1.close(); resolve(); };
+        channel.port2.postMessage(0);
+        return;
+      }
+    } catch {
+      // A host without MessageChannel falls back to the timer below.
+    }
+    setTimeout(resolve, 0);
+  });
+}
+
 /**
  * @param {Record<string, Uint8Array>} entries
  * @param {string} path
@@ -349,11 +378,17 @@ function readToc(manifest, opfDir, entries) {
  * caller can turn it into a thumbnail; it is `null` when the book has no
  * cover image.
  *
+ * The reading order is walked chapter by chapter, so the parser can say how
+ * far it is: the progress callback receives
+ * `{ ratio, current, total, unit: 'chapter' }` after every chapter.
+ *
  * @param {any} file
+ * @param {{ onProgress?: Function }} [options]
  * @returns {Promise<{ title: string, author: string, format: string, chapters: object[],
  *   cover: { mime: string, bytes: Uint8Array } | null }>}
  */
-export async function parseEpub(file) {
+export async function parseEpub(file, options = {}) {
+  const report = typeof options.onProgress === 'function' ? options.onProgress : () => {};
   const bytes = await readAsBytes(file);
   let entries;
   try {
@@ -377,9 +412,11 @@ export async function parseEpub(file) {
   const toc = readToc(manifest, opfDir, entries);
 
   const chapters = [];
-  for (const ref of spine) {
-    // Non-linear items are footnotes and similar extras, not reading order.
-    if (!ref.linear) continue;
+  // Non-linear items are footnotes and similar extras, not reading order.
+  const readingOrder = spine.filter((ref) => ref.linear);
+  report({ ratio: 0, current: 0, total: readingOrder.length, unit: 'chapter' });
+  for (let position = 0; position < readingOrder.length; position += 1) {
+    const ref = readingOrder[position];
     const item = manifestById.get(ref.idref);
     if (!item) continue;
     const path = resolvePath(opfDir, item.href);
@@ -398,6 +435,15 @@ export async function parseEpub(file) {
       paragraphs,
       path,
     });
+    report({
+      ratio: (position + 1) / readingOrder.length,
+      current: position + 1,
+      total: readingOrder.length,
+      unit: 'chapter',
+    });
+    // Every few chapters the browser gets a frame, so the progress the
+    // learner sees actually moves.
+    if ((position + 1) % PAINT_EVERY === 0) await yieldToPaint();
   }
 
   const kept = chapters.filter((chapter) => chapter.paragraphs.length > 0);

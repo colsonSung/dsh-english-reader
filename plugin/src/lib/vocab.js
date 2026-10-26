@@ -3,15 +3,18 @@
  *
  * The layer is deliberately free of React, so the reader, the word card and
  * the vocabulary panel can share one source of truth. Storage is injected:
- * the default instance writes to the browser's IndexedDB — the same database
- * as the book shelf — while the tests inject an in-memory backend, because
- * Node has no IndexedDB.
+ * the default instance asks the Host for the list — so the words are the same
+ * in the application and in the browser — and falls back to the browser's own
+ * IndexedDB while the Host has no shelf yet. The tests inject an in-memory
+ * backend, because Node has no IndexedDB.
  *
  * A word is identified by its normalized form (`id`): lower case, without the
  * punctuation that surrounds it. Collecting the same word twice therefore
  * never creates a second row.
  */
-import { withStore, VOCAB_STORE_NAME } from './store.js';
+import { callShelf, SHELF_UNAVAILABLE } from './remote.js';
+import { isHostShelfAvailable, noteHostShelfUnavailable } from './store.js';
+import { VOCAB_STORE_NAME, withStore } from './local-store.js';
 
 /** One day in milliseconds. */
 const DAY = 24 * 60 * 60 * 1000;
@@ -200,14 +203,79 @@ export function summarize(entries, now = Date.now()) {
 
 /**
  * The backend that keeps the vocabulary in the browser's IndexedDB.
+ *
+ * It is the fallback for the times when the Host has no shelf yet.
  * @returns {VocabBackend}
  */
-function createIndexedDbBackend() {
+function createLocalBackend() {
   return {
     list: () => withStore('readonly', (store) => store.getAll(), VOCAB_STORE_NAME),
     get: (id) => withStore('readonly', (store) => store.get(id), VOCAB_STORE_NAME),
     put: (entry) => withStore('readwrite', (store) => store.put(entry), VOCAB_STORE_NAME),
     remove: (id) => withStore('readwrite', (store) => store.delete(id), VOCAB_STORE_NAME),
+  };
+}
+
+/**
+ * The backend that keeps the vocabulary on the Host.
+ *
+ * The Host holds the truth; the browser's own table is only used while the
+ * Host has no shelf, which is the window between refreshing the page and
+ * restarting the application.
+ * @returns {VocabBackend}
+ */
+export function createRemoteBackend() {
+  const local = createLocalBackend();
+  return {
+    list: async () => {
+      if (!isHostShelfAvailable()) return local.list();
+      try {
+        const entries = await callShelf('vocab.list');
+        return Array.isArray(entries) ? entries : [];
+      } catch (error) {
+        if (error?.code !== SHELF_UNAVAILABLE) throw error;
+        noteHostShelfUnavailable();
+        return local.list();
+      }
+    },
+    get: async (id) => {
+      if (!isHostShelfAvailable()) return local.get(id);
+      try {
+        const entries = await callShelf('vocab.list');
+        const found = (Array.isArray(entries) ? entries : []).find((entry) => entry?.id === id);
+        return found ?? undefined;
+      } catch (error) {
+        if (error?.code !== SHELF_UNAVAILABLE) throw error;
+        noteHostShelfUnavailable();
+        return local.get(id);
+      }
+    },
+    put: async (entry) => {
+      if (!isHostShelfAvailable()) {
+        await local.put(entry);
+        return;
+      }
+      try {
+        await callShelf('vocab.put', { entry });
+      } catch (error) {
+        if (error?.code !== SHELF_UNAVAILABLE) throw error;
+        noteHostShelfUnavailable();
+        await local.put(entry);
+      }
+    },
+    remove: async (id) => {
+      if (!isHostShelfAvailable()) {
+        await local.remove(id);
+        return;
+      }
+      try {
+        await callShelf('vocab.delete', { id });
+      } catch (error) {
+        if (error?.code !== SHELF_UNAVAILABLE) throw error;
+        noteHostShelfUnavailable();
+        await local.remove(id);
+      }
+    },
   };
 }
 
@@ -245,8 +313,8 @@ function notifyChanged() {
 /**
  * Build a vocabulary store on top of a storage backend.
  *
- * The default backend is the browser's IndexedDB; the tests inject the
- * in-memory one, so nothing here needs a browser.
+ * The default backend is the Host's shelf; the tests inject the in-memory
+ * one, so nothing here needs a browser.
  * @param {{ backend?: VocabBackend }} [options]
  * @returns {{
  *   listEntries: () => Promise<VocabEntry[]>,
@@ -259,7 +327,7 @@ function notifyChanged() {
  * }}
  */
 export function createVocabStore(options = {}) {
-  const backend = options?.backend ?? createIndexedDbBackend();
+  const backend = options?.backend ?? createRemoteBackend();
 
   /**
    * Every entry, the newest first.
@@ -344,7 +412,7 @@ export function createVocabStore(options = {}) {
   return { listEntries, addEntry, removeEntry, updateEntry, dueEntries, summarize, scheduleNext };
 }
 
-/** The store the plugin itself uses: the browser's IndexedDB. */
+/** The store the plugin itself uses: the Host's shelf. */
 const defaultStore = createVocabStore();
 
 /**

@@ -2,11 +2,14 @@
  * The reader's notes.
  *
  * A note belongs to a book and to a place in it: the sentence it was taken
- * from, its text, and when it was written. Notes live in the local database, so
- * they survive a reload and never leave the machine.
+ * from, its text, and when it was written. The notes live on the Host, so
+ * they are the same in the application and in the browser; while the Host has
+ * no shelf yet they stay in the browser's own database.
  */
 
-import { NOTES_STORE_NAME, withStore } from './store.js';
+import { callShelf, SHELF_UNAVAILABLE } from './remote.js';
+import { isHostShelfAvailable, noteHostShelfUnavailable } from './store.js';
+import { NOTES_STORE_NAME, withStore } from './local-store.js';
 
 /**
  * @typedef {object} Note
@@ -57,7 +60,7 @@ let backendOverride = null;
 /**
  * Replace the backend the notes are read from and written to.
  *
- * @param {{list: Function, get: Function, put: Function, remove: Function}|null} backend - the backend, or null to restore the local database.
+ * @param {{list: Function, get: Function, put: Function, remove: Function}|null} backend - the backend, or null to restore the default one.
  * @returns {void}
  */
 export function setNotesBackend(backend) {
@@ -65,17 +68,82 @@ export function setNotesBackend(backend) {
 }
 
 /**
- * The backend the notes are read from and written to.
+ * The backend that keeps the notes in the browser's own database.
  *
+ * It is the fallback for the times when the Host has no shelf yet.
  * @returns {{list: Function, get: Function, put: Function, remove: Function}} the backend.
  */
-function defaultBackend() {
-  if (backendOverride !== null) return backendOverride;
+function createLocalBackend() {
   return {
     list: async () => (await withStore('readonly', (store) => store.getAll(), NOTES_STORE_NAME)) ?? [],
     get: async (id) => withStore('readonly', (store) => store.get(id), NOTES_STORE_NAME),
     put: async (note) => { await withStore('readwrite', (store) => store.put(note), NOTES_STORE_NAME); },
     remove: async (id) => { await withStore('readwrite', (store) => store.delete(id), NOTES_STORE_NAME); },
+  };
+}
+
+/**
+ * The backend the notes are read from and written to.
+ *
+ * The Host holds the truth; the browser's own table is only used while the
+ * Host has no shelf, which is the window between refreshing the page and
+ * restarting the application.
+ *
+ * @returns {{list: Function, get: Function, put: Function, remove: Function}} the backend.
+ */
+function defaultBackend() {
+  if (backendOverride !== null) return backendOverride;
+  const local = createLocalBackend();
+  return {
+    list: async () => {
+      if (!isHostShelfAvailable()) return local.list();
+      try {
+        const notes = await callShelf('notes.list');
+        return Array.isArray(notes) ? notes : [];
+      } catch (error) {
+        if (error?.code !== SHELF_UNAVAILABLE) throw error;
+        noteHostShelfUnavailable();
+        return local.list();
+      }
+    },
+    get: async (id) => {
+      if (!isHostShelfAvailable()) return local.get(id);
+      try {
+        const notes = await callShelf('notes.list');
+        const found = (Array.isArray(notes) ? notes : []).find((note) => note?.id === id);
+        return found ?? undefined;
+      } catch (error) {
+        if (error?.code !== SHELF_UNAVAILABLE) throw error;
+        noteHostShelfUnavailable();
+        return local.get(id);
+      }
+    },
+    put: async (note) => {
+      if (!isHostShelfAvailable()) {
+        await local.put(note);
+        return;
+      }
+      try {
+        await callShelf('notes.put', { note });
+      } catch (error) {
+        if (error?.code !== SHELF_UNAVAILABLE) throw error;
+        noteHostShelfUnavailable();
+        await local.put(note);
+      }
+    },
+    remove: async (id) => {
+      if (!isHostShelfAvailable()) {
+        await local.remove(id);
+        return;
+      }
+      try {
+        await callShelf('notes.delete', { id });
+      } catch (error) {
+        if (error?.code !== SHELF_UNAVAILABLE) throw error;
+        noteHostShelfUnavailable();
+        await local.remove(id);
+      }
+    },
   };
 }
 

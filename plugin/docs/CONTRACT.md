@@ -8,7 +8,7 @@
 
 ```
 File(epub/txt/md/html/pdf)
-  → src/lib/parsers/index.js  parseBook(file) → ParsedBook
+  → src/lib/parsers/index.js  parseBook(file, onProgress?) → ParsedBook
   → src/lib/engine/segment.js buildUnits(chapters) → Unit[]
   → src/lib/engine/tts.js     朗读（逐词/整句，带 word boundary 回调）
   → src/lib/engine/asr.js     识别用户朗读 → transcript
@@ -28,11 +28,22 @@ export const SUPPORTED_ACCEPT = '.epub,.txt,.md,.markdown,.html,.htm,.pdf';
 /**
  * 解析一本电子书。
  * @param {File|Blob} file - 浏览器 File/Blob，需有 name 与 type
+ * @param {(info: {ratio: number, current: number, total: number, unit: 'page'|'chapter'|null}) => void} [onProgress] - 可选的进度回调
  * @returns {Promise<ParsedBook>}
  * @throws {Error} 不支持格式时抛出，message 为中文可读文案
  */
-export async function parseBook(file);
+export async function parseBook(file, onProgress);
 ```
+
+### 进度回调
+
+`onProgress` 是**可选**的，不传时行为与从前完全一样。它的作用是让界面能报出「现在到哪了」：
+
+- `ratio`：解析完成的份额，`0` 到 `1`，只增不减。
+- `current` / `total`：数得出来时的计数（PDF 的页、EPUB 的章）。
+- `unit`：`'page'` / `'chapter'` / `null`（数不出来时为 `null`）。
+
+数不出来的格式（TXT / MD / HTML）在解析前后各报一次，`ratio` 为 `0` 和 `1`。
 
 ### ParsedBook
 

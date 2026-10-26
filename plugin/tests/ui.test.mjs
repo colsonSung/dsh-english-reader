@@ -9,10 +9,21 @@
 import './dom-setup.mjs'
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { readFileSync } from 'node:fs'
 import { dom } from './dom-setup.mjs'
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { act } from 'react'
+
+/**
+ * The bundle id must equal the package name: the shell's module loader keys
+ * the registered factory by that id. The build reads the name from
+ * `package.json`, so the test reads it from there too — the package is named
+ * differently in a local checkout and in the published package.
+ */
+const PACKAGE_ID = JSON.parse(
+  readFileSync(new URL('../package.json', import.meta.url), 'utf8'),
+).name
 
 /** The built bundle is imported once; the factory is called per test. */
 let registration
@@ -23,7 +34,7 @@ async function loadClientModule() {
     dom.window.__ModuleLoader__ = { load: (value) => { registration = value } }
     await import('../client.js')
     assert.ok(registration, 'the bundle must register a module factory')
-    assert.equal(registration.id, 'dsh-english-reader')
+    assert.equal(registration.id, PACKAGE_ID)
   }
   return registration.factory((specifier) => {
     if (specifier === 'react') return React
@@ -264,6 +275,29 @@ test('the reader shows the whole paragraph and marks the active sentence', async
   assert.ok(scopeParagraph, 'the scope switch must exist')
   await act(async () => { scopeParagraph.dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true })) })
   assert.equal(container.querySelectorAll('.er-word.is-muted').length, 0)
+
+  await act(async () => { root.unmount() })
+})
+
+test('the reader opens without a book instead of crashing', async () => {
+  const { ReaderView } = await import('../src/ui/reader.js')
+  const container = dom.window.document.createElement('div')
+  dom.window.document.body.appendChild(container)
+  const root = ReactDOM.createRoot(container)
+  // The reader tab can be opened before a book is loaded: there is no active
+  // unit at all. The view must show its empty state instead of throwing.
+  await act(async () => {
+    root.render(React.createElement(ReaderView, {
+      t,
+      book: null,
+      units: [],
+      index: 0,
+      onIndexChange: () => {},
+    }))
+  })
+
+  assert.ok(container.querySelector('.er-empty'), 'the empty state must be shown')
+  assert.equal(container.querySelectorAll('.er-paragraph-row').length, 0)
 
   await act(async () => { root.unmount() })
 })

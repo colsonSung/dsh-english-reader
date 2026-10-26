@@ -10,6 +10,8 @@
  * the method:
  *   - `word` / `translate` / `breakdown`: the AI assist answers (MiniMax first,
  *     the Host's own model as the fallback)
+ *   - `mindmap` / `podcast`: the chapter outline and the podcast script
+ *   - `podcastReply`: the answer to a learner who talks back mid-episode
  *   - `tts`: the reading voice, synthesised by MiniMax
  *   - `voices`: the MiniMax system voices
  *   - `status`: which channels are available
@@ -27,7 +29,7 @@ import * as gutenberg from './src/host/gutenberg.js';
 export const ROUTE = '/api/english-reader';
 
 /** The methods the client half may ask for. */
-const METHODS = new Set(['word', 'translate', 'breakdown', 'tts', 'asr', 'cover', 'voices', 'status', 'source']);
+const METHODS = new Set(['word', 'translate', 'breakdown', 'mindmap', 'podcast', 'podcastReply', 'tts', 'asr', 'cover', 'voices', 'status', 'source']);
 
 /**
  * Build the error body the client half understands.

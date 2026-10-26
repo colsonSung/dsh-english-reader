@@ -3,7 +3,7 @@
 // answers instead.
 process.env.ENGLISH_READER_MINIMAX_KEY_FILE = '/nonexistent/english-reader/minimax.key';
 /**
- * AI 通道单元测试。
+ * AI 通道单元测试（对应 CONTRACT-AI.md 1 与 2）。
  *
  * 覆盖：
  *   - src/host/ai.js：正常返回、JSON 解析失败后的重试、模型服务缺失、超时、字段缺失补默认值
@@ -78,7 +78,7 @@ function createFakeLlm(answers) {
  * @param {string} [model] - 模型名。
  * @returns {object} 假服务。
  */
-function createFakeSelection(provider = 'default', model = 'MiniMax-M3.1-Flash') {
+function createFakeSelection(provider = 'onerway', model = 'MiniMax-M3.1-Flash') {
   return { currentSelection: () => ({ provider, model }) };
 }
 
@@ -127,14 +127,14 @@ test('请求带上了默认模型、温度与 token 上限，消息是 content b
 
   assert.equal(llm.calls.length, 1);
   assert.deepEqual(llm.calls[0].config, {
-    provider: 'default',
+    provider: 'onerway',
     model: 'MiniMax-M3.1-Flash',
     temperature: 0.2,
     maxTokens: 800,
   });
 
   const options = llm.streams[0];
-  assert.equal(options.provider, 'default');
+  assert.equal(options.provider, 'onerway');
   assert.equal(options.model, 'MiniMax-M3.1-Flash');
   assert.equal(options.temperature, 0.2);
   assert.equal(options.maxTokens, 800);
@@ -169,6 +169,128 @@ test('translate 与 breakdown 返回各自的结构', async () => {
     simplified: 'That man.',
   });
   assert.equal(breakdownLlm.calls[0].config.maxTokens, 1200);
+});
+
+test('mindmap 返回一棵分支树，坏数据被丢掉', async () => {
+  const llm = createFakeLlm(JSON.stringify({
+    title: '人物关系',
+    branches: [
+      { label: '主线', quote: 'It was a bright cold day.', items: [{ label: '相遇', note: '第一章', quote: 'a bright cold day' }, { label: '离开' }] },
+      { label: '', items: [{ label: '没有分支名' }] },
+      { label: '支线', items: [{ label: '一' }, { label: '二' }] },
+    ],
+  }));
+  const result = await runAiMethod('mindmap', { title: 'A Novel', chapterTitle: 'Chapter One', text: 'It was a bright cold day.' }, {
+    llm,
+    agentDefaultModel: createFakeSelection(),
+  });
+
+  assert.equal(result.title, '人物关系');
+  assert.deepEqual(result.branches.map((branch) => branch.label), ['主线', '支线']);
+  // The quote travels with the node: it is how the learner gets back to the
+  // passage the node came from.
+  assert.deepEqual(result.branches[0].items, [
+    { label: '相遇', note: '第一章', quote: 'a bright cold day' },
+    { label: '离开', note: '', quote: '' },
+  ]);
+  assert.equal(result.branches[0].quote, 'It was a bright cold day.');
+  // The prompt carries the book, the chapter and the text.
+  const prompt = llm.streams[0].messages[0].content[0].text;
+  assert.match(prompt, /A Novel/);
+  assert.match(prompt, /Chapter One/);
+  assert.match(prompt, /bright cold day/);
+});
+
+test('podcast 返回逐句对话，主持人与嘉宾被认出来', async () => {
+  const llm = createFakeLlm(JSON.stringify({
+    title: 'The Opening',
+    summary: 'Why the novel begins here.',
+    dialogue: [
+      { speaker: 'Host', text: 'What happened before page one?' },
+      { speaker: 'Guest', text: 'Plenty, and the novel wants us to feel it.' },
+      { speaker: 'host', text: '' },
+    ],
+  }));
+  const result = await runAiMethod('podcast', { title: 'A Novel', chapterTitle: 'Chapter One', text: 'It was a bright cold day.' }, {
+    llm,
+    agentDefaultModel: createFakeSelection(),
+  });
+
+  assert.equal(result.title, 'The Opening');
+  assert.equal(result.summary, 'Why the novel begins here.');
+  assert.deepEqual(result.dialogue, [
+    { speaker: 'host', text: 'What happened before page one?' },
+    { speaker: 'guest', text: 'Plenty, and the novel wants us to feel it.' },
+  ]);
+});
+
+test('podcast 分章节与全书两种范围', async () => {
+  const llm = createFakeLlm('{"title":"x","summary":"y","dialogue":[]}');
+  await runAiMethod('podcast', { title: 'A Novel', chapterTitle: 'Chapter One', scope: 'chapter', text: 'It was a bright cold day.' }, {
+    llm,
+    agentDefaultModel: createFakeSelection(),
+  });
+  assert.match(llm.streams[0].messages[0].content[0].text, /章节：Chapter One/);
+
+  const bookLlm = createFakeLlm('{"title":"x","summary":"y","dialogue":[]}');
+  await runAiMethod('podcast', { title: 'A Novel', chapterTitle: 'The whole book', scope: 'book', text: '[Chapter One] It was a bright cold day.' }, {
+    llm: bookLlm,
+    agentDefaultModel: createFakeSelection(),
+  });
+  const prompt = bookLlm.streams[0].messages[0].content[0].text;
+  assert.match(prompt, /范围：全书/);
+  assert.match(prompt, /覆盖全书的主要脉络/);
+});
+
+test('podcastReply 接过学员的插话', async () => {
+  const llm = createFakeLlm(JSON.stringify({
+    lines: [
+      { speaker: 'host', text: 'Good question. Let us go back to it.' },
+      { speaker: 'guest', text: 'The clue is in the first paragraph.' },
+    ],
+  }));
+  const result = await runAiMethod('podcastReply', {
+    title: 'A Novel',
+    chapterTitle: 'Chapter One',
+    text: 'host: Welcome to the episode.',
+    said: 'But why does he say that?',
+  }, {
+    llm,
+    agentDefaultModel: createFakeSelection(),
+  });
+
+  assert.deepEqual(result.lines, [
+    { speaker: 'host', text: 'Good question. Let us go back to it.' },
+    { speaker: 'guest', text: 'The clue is in the first paragraph.' },
+  ]);
+  const prompt = llm.streams[0].messages[0].content[0].text;
+  assert.match(prompt, /But why does he say that\?/);
+  assert.match(prompt, /Welcome to the episode/);
+});
+
+test('podcastReply 没有学员的话就不该发生', async () => {
+  const llm = createFakeLlm('{"lines":[]}');
+  await assert.rejects(
+    () => runAiMethod('podcastReply', { said: '' }, { llm, agentDefaultModel: createFakeSelection() }),
+    /缺少学员说的话/,
+  );
+});
+
+test('mindmap 与 podcast 都要有正文，正文太长会被截断', async () => {
+  const llm = createFakeLlm('{"title":"x","branches":[],"dialogue":[]}');
+  await assert.rejects(
+    () => runAiMethod('mindmap', { text: '' }, { llm, agentDefaultModel: createFakeSelection() }),
+    /缺少要整理的章节内容/,
+  );
+  await assert.rejects(
+    () => runAiMethod('podcast', { text: '' }, { llm, agentDefaultModel: createFakeSelection() }),
+    /缺少要改写的章节内容/,
+  );
+
+  const longLlm = createFakeLlm('{"title":"x","branches":[],"dialogue":[]}');
+  await runAiMethod('mindmap', { text: 'a'.repeat(30000) }, { llm: longLlm, agentDefaultModel: createFakeSelection() });
+  const prompt = longLlm.streams[0].messages[0].content[0].text;
+  assert.ok(prompt.length < 30000, 'the prompt must not carry the whole chapter');
 });
 
 test('模型带 markdown 包裹时也能解析', async () => {
@@ -281,7 +403,7 @@ test('不支持的方法与缺少参数都抛出中文错误', async () => {
 test('模型服务报错时给出中文提示而不是英文堆栈', async () => {
   const llm = {
     async prepareCall() {
-      const error = new Error('no adapter registered for provider "default"');
+      const error = new Error('no adapter registered for provider "onerway"');
       error.code = 'NO_ADAPTER';
       throw error;
     },

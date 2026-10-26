@@ -18,6 +18,7 @@
  * on top carries accuracy and speed.
  */
 import { createElement as h, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { createTts } from '../lib/engine/tts.js';
 import { createSyncDriver } from '../lib/engine/sync.js';
 import { createRecognizer, createRecorder, isRecognitionSupported } from '../lib/engine/asr.js';
@@ -26,11 +27,15 @@ import { addEntry, listEntries, removeEntry } from '../lib/vocab.js';
 import { recordReading } from '../lib/activity.js';
 import { askAi } from '../lib/ai.js';
 import { blobToBase64, speakWord } from '../lib/speech.js';
-import { countNotes } from '../lib/notes.js';
+import { addNote, listNotes, removeNote } from '../lib/notes.js';
+import { listPodcasts, removePodcast, savePodcast } from '../lib/podcasts.js';
 import { NotesPanel } from './notes.js';
+import { MindMapView } from './mindmap.js';
+import { PodcastView } from './podcast.js';
 import {
-  ClozeIcon, ExitIcon, HighlighterIcon, KeyboardIcon, ListIcon, MicIcon, NextIcon, NoteIcon,
-  PauseIcon, PlayIcon, PrevIcon, RepeatIcon, SettingsIcon, SoundIcon, TranslateIcon,
+  ClozeIcon, ExitIcon, GlobeIcon, HighlighterIcon, KeyboardIcon, ListIcon, MicIcon, MindMapIcon,
+  NextIcon, NoteIcon, PauseIcon, PencilIcon, PlayIcon, PodcastIcon, PrevIcon, RepeatIcon,
+  SettingsIcon, SoundIcon, TrashIcon, TranslateIcon,
 } from './icons.js';
 import { WordCard } from './wordcard.js';
 import { Modal } from './library.js';
@@ -42,6 +47,23 @@ const PAGE_PARAGRAPHS = 6;
 const MIN_PAGE_PARAGRAPHS = 3;
 /** The most paragraphs a page may hold, however tall the window is. */
 const MAX_PAGE_PARAGRAPHS = 40;
+
+/**
+ * Put a floating panel at the end of the document body.
+ *
+ * The panels live in the body so that no ancestor of the reader can clip them
+ * or paint over them: the sticky mode row and the tool rail both live inside
+ * the reader, and a panel anchored to them has to escape their stacking
+ * contexts.
+ *
+ * @param {any} element - the element tree, or null when there is nothing to show.
+ * @returns {any} the portal, or the element itself when there is no document.
+ */
+function floating(element) {
+  if (element === null || element === undefined) return null;
+  if (typeof document === 'undefined') return element;
+  return createPortal(element, document.body);
+}
 
 const TYPING_SETTINGS_KEY = 'english-reader:typing';
 
@@ -441,6 +463,46 @@ export function ReaderView({
   const [noteCount, setNoteCount] = useState(0);
   // Bumped whenever a note is written, so the badge follows at once.
   const [notesVersion, setNotesVersion] = useState(0);
+  // Every note of the book: the paragraphs show which ones already have one.
+  const [bookNotes, setBookNotes] = useState([]);
+  // The note editor, when it is open: which paragraph it belongs to and where
+  // it was opened.
+  const [noteEditor, setNoteEditor] = useState(null);
+  const [noteDraft, setNoteDraft] = useState('');
+  const [noteError, setNoteError] = useState('');
+  // The paragraph being read on its own, and the one being translated.
+  const [speakingParagraph, setSpeakingParagraph] = useState(-1);
+  const [translatingParagraph, setTranslatingParagraph] = useState(-1);
+  // Where the learning-modes panel is anchored.
+  const [modesAnchor, setModesAnchor] = useState(null);
+  const modesButtonRef = useRef(null);
+  const modesRowRef = useRef(null);
+  const modesPanelRef = useRef(null);
+  const noteEditorRef = useRef(null);
+  // The mind map of the chapter being read.
+  const [mindMapOpen, setMindMapOpen] = useState(false);
+  const [mindMapData, setMindMapData] = useState(null);
+  const [mindMapChapter, setMindMapChapter] = useState('');
+  const [mindMapLoading, setMindMapLoading] = useState(false);
+  const [mindMapError, setMindMapError] = useState('');
+  // The audio podcast of the chapter being read.
+  const [podcastOpen, setPodcastOpen] = useState(false);
+  const [podcastEpisodes, setPodcastEpisodes] = useState([]);
+  const [podcastActiveId, setPodcastActiveId] = useState(null);
+  const [podcastLine, setPodcastLine] = useState(-1);
+  const [podcastPlaying, setPodcastPlaying] = useState(false);
+  const [podcastLoading, setPodcastLoading] = useState(false);
+  const [podcastError, setPodcastError] = useState('');
+  // What an episode covers: a chapter, or the whole book.
+  const [podcastScope, setPodcastScope] = useState('');
+  // The two voices of the show: the host keeps the voice the learner already
+  // listens to, the guest gets a different one so the two are tellable apart.
+  const [podcastVoices, setPodcastVoices] = useState({ host: '', guest: '' });
+  // The learner talking back while the episode plays.
+  const [interjecting, setInterjecting] = useState(false);
+  const [interjectError, setInterjectError] = useState('');
+  const interjectRecorderRef = useRef(null);
+  const podcastBookRef = useRef(book?.id ?? '');
   const [repeat, setRepeat] = useState(false);
 
   const recognizerRef = useRef(null);
@@ -472,18 +534,53 @@ export function ReaderView({
     return () => { cancelled = true; };
   }, [tts]);
 
-  // How many notes does this book have?
+  // How many notes does this book have, and which paragraphs already carry
+  // one? The list is the source of truth for both.
   useEffect(() => {
     let cancelled = false;
     if (book === null || book === undefined) {
       setNoteCount(0);
+      setBookNotes([]);
       return undefined;
     }
-    void countNotes(book.id)
-      .then((count) => { if (!cancelled) setNoteCount(count); })
-      .catch(() => { if (!cancelled) setNoteCount(0); });
+    void listNotes(book.id)
+      .then((list) => {
+        if (cancelled) return;
+        setBookNotes(list);
+        setNoteCount(list.length);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setNoteCount(0);
+        setBookNotes([]);
+      });
     return () => { cancelled = true; };
   }, [book?.id, notesOpen, notesVersion]);
+
+  // The floating panels close on Escape and on a click outside them. The tool
+  // rail keeps them open by itself: it opens and closes them on its own.
+  useEffect(() => {
+    if (!modePanelOpen && noteEditor === null) return undefined;
+    const onKeyDown = (event) => {
+      if (event.key !== 'Escape') return;
+      setModePanelOpen(false);
+      setNoteEditor(null);
+    };
+    const onPointerDown = (event) => {
+      const target = event.target;
+      if (modesPanelRef.current?.contains?.(target) === true) return;
+      if (noteEditorRef.current?.contains?.(target) === true) return;
+      if (typeof target?.closest === 'function' && target.closest('.er-read-tool') !== null) return;
+      setModePanelOpen(false);
+      setNoteEditor(null);
+    };
+    document.addEventListener('keydown', onKeyDown);
+    document.addEventListener('pointerdown', onPointerDown, true);
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+      document.removeEventListener('pointerdown', onPointerDown, true);
+    };
+  }, [modePanelOpen, noteEditor]);
 
   // Is the transcription channel ready?
   useEffect(() => {
@@ -750,6 +847,46 @@ export function ReaderView({
     return () => { cancelled = true; };
   }, [modes.translate, pageRange, units, paragraphs]);
 
+  // Translate one paragraph on its own. The translation lands under it, in the
+  // same place the full-text switch puts it.
+  const translateParagraph = useCallback(async (group, paragraphIndex) => {
+    if (translatingParagraph === paragraphIndex) return;
+    setTranslatingParagraph(paragraphIndex);
+    try {
+      const text = group.unitIndexes.map((unitIndex) => units[unitIndex]?.text ?? '').join(' ');
+      if (text.trim() === '') return;
+      const result = await askAi('translate', { text });
+      const value = result?.text ?? '';
+      // A failed translation leaves the paragraph alone rather than showing
+      // an empty line.
+      if (value === '') return;
+      const next = { ...translationsRef.current, [paragraphIndex]: value };
+      translationsRef.current = next;
+      setTranslations(next);
+    } catch {
+      // The model is unreachable: the paragraph stays as it was.
+    } finally {
+      setTranslatingParagraph(-1);
+    }
+  }, [translatingParagraph, units]);
+
+  // Read one paragraph aloud, on its own. A second click stops it.
+  const speakParagraph = useCallback((group, paragraphIndex) => {
+    if (speakingParagraph === paragraphIndex) {
+      tts.cancel();
+      setSpeakingParagraph(-1);
+      return;
+    }
+    const text = group.unitIndexes.map((unitIndex) => units[unitIndex]?.text ?? '').join(' ');
+    if (text.trim() === '') return;
+    tts.cancel();
+    setSpeakingParagraph(paragraphIndex);
+    tts.speak(text, {
+      onEnd: () => { setSpeakingParagraph(-1); },
+      onError: () => { setSpeakingParagraph(-1); },
+    });
+  }, [speakingParagraph, tts, units]);
+
   const practiceIndexByDisplay = useMemo(() => {
     const map = new Map();
     practice.words.forEach((word, position) => { map.set(word.displayIndex, position); });
@@ -796,6 +933,363 @@ export function ReaderView({
     });
     return [...map.values()];
   }, [units]);
+
+  // The chapter the learner is in: both the mind map and the podcast are built
+  // from it, so they follow the reading position.
+  const chapterIndex = unit?.chapterIndex ?? 0;
+  const chapterTitle = chapters.find((entry) => entry.index === chapterIndex)?.title ?? '';
+  const chapterKey = String(chapterIndex);
+  // The chapter's text. It is cut long before the model sees it: an outline
+  // needs the argument, not every sentence.
+  const chapterText = useMemo(() => {
+    const parts = [];
+    for (const entry of units) {
+      if (entry.chapterIndex !== chapterIndex) continue;
+      parts.push(entry.text ?? '');
+    }
+    return parts.join(' ').slice(0, 12000);
+  }, [chapterIndex, units]);
+
+  // Ask the model for the mind map of this chapter.
+  const generateMindMap = useCallback(async () => {
+    setMindMapLoading(true);
+    setMindMapError('');
+    try {
+      const result = await askAi('mindmap', {
+        title: book?.title ?? '',
+        chapterTitle,
+        text: chapterText,
+      });
+      setMindMapData(result);
+      setMindMapChapter(chapterKey);
+    } catch (error) {
+      setMindMapError(error?.message ?? t('mindmap.failed'));
+    } finally {
+      setMindMapLoading(false);
+    }
+  }, [book?.title, chapterKey, chapterText, chapterTitle, t]);
+
+  // Open the mind map. A map of another chapter is not shown here: the panel
+  // always talks about the chapter being read.
+  const openMindMap = useCallback(() => {
+    setMindMapOpen(true);
+    if (mindMapChapter !== chapterKey || mindMapData === null) void generateMindMap();
+  }, [chapterKey, generateMindMap, mindMapChapter, mindMapData]);
+
+  // Where a node of the mind map comes from. The model quotes the chapter, so
+  // the quote is looked up in the text and the node is given the unit it comes
+  // from: the learner can jump straight back to that passage.
+  const locateQuote = useCallback((quote) => {
+    const needle = String(quote ?? '').trim().toLowerCase();
+    if (needle === '') return -1;
+    for (let unitIndex = 0; unitIndex < units.length; unitIndex += 1) {
+      const body = String(units[unitIndex]?.text ?? '').toLowerCase();
+      if (!body.includes(needle)) continue;
+      const paragraphIndex = paragraphIndexByUnit.get(unitIndex);
+      const group = paragraphs[paragraphIndex];
+      return group?.unitIndexes?.[0] ?? unitIndex;
+    }
+    return -1;
+  }, [paragraphIndexByUnit, paragraphs, units]);
+
+  // The mind map with every node annotated with where it comes from.
+  const mindMapView = useMemo(() => {
+    if (mindMapData === null) return null;
+    const branches = (Array.isArray(mindMapData.branches) ? mindMapData.branches : []).map((branch) => ({
+      ...branch,
+      target: locateQuote(branch?.quote),
+      items: (Array.isArray(branch?.items) ? branch.items : []).map((item) => ({
+        ...item,
+        target: locateQuote(item?.quote),
+      })),
+    }));
+    return { title: mindMapData.title ?? '', branches };
+  }, [locateQuote, mindMapData]);
+
+  // Jump from a node of the mind map to the passage it came from.
+  const jumpFromMindMap = useCallback((node) => {
+    const target = node?.target;
+    if (typeof target !== 'number' || target < 0) return;
+    setMindMapOpen(false);
+    onIndexChange(target);
+  }, [onIndexChange]);
+
+  // The episodes of this book, newest first.
+  const refreshPodcasts = useCallback(async () => {
+    if (book === null || book === undefined) {
+      setPodcastEpisodes([]);
+      return;
+    }
+    try {
+      const list = await listPodcasts(book.id);
+      setPodcastEpisodes(list);
+    } catch {
+      setPodcastEpisodes([]);
+    }
+  }, [book?.id]);
+
+  // What an episode can cover: every chapter of the book, plus the whole book.
+  const podcastScopes = useMemo(() => {
+    const list = chapters.map((chapter) => ({
+      key: String(chapter.index),
+      label: `${format(t('podcast.scopeChapter'), { n: chapter.index + 1 })} · ${chapter.title}`,
+    }));
+    list.push({ key: 'book', label: t('podcast.scopeBook') });
+    return list;
+  }, [chapters, t]);
+
+  // Can this window record at all? A browser only exposes the microphone in a
+  // secure context (https or localhost). The desktop app serves its window
+  // from a custom scheme, so there the learner types instead of talking.
+  const canRecord = useMemo(() => {
+    const g = typeof globalThis === 'undefined' ? {} : globalThis;
+    return typeof g.MediaRecorder === 'function'
+      && typeof g.navigator?.mediaDevices?.getUserMedia === 'function';
+  }, []);
+
+  // The English voices the show can use.
+  const englishVoices = useMemo(
+    () => voices.filter((voice) => String(voice.lang ?? '').toLowerCase().startsWith('en')),
+    [voices],
+  );
+
+  // Give the show its two voices as soon as the voice list is there: the host
+  // keeps the reading voice, the guest gets the first one that is not it.
+  useEffect(() => {
+    if (englishVoices.length === 0) return;
+    setPodcastVoices((current) => {
+      const host = englishVoices.some((voice) => voice.id === current.host)
+        ? current.host
+        : (englishVoices.some((voice) => voice.id === voiceId) ? voiceId : englishVoices[0].id);
+      const guest = englishVoices.some((voice) => voice.id === current.guest) && current.guest !== host
+        ? current.guest
+        : (englishVoices.find((voice) => voice.id !== host)?.id ?? host);
+      if (host === current.host && guest === current.guest) return current;
+      return { host, guest };
+    });
+  }, [englishVoices, voiceId]);
+
+  // The whole book cannot be read in one go, so the model gets the structure
+  // and the opening of every chapter: enough to write an episode about the
+  // book's line of argument.
+  const bookDigest = useMemo(() => {
+    const parts = [];
+    for (const chapter of chapters) {
+      const body = units
+        .filter((unit) => unit.chapterIndex === chapter.index)
+        .map((unit) => unit.text ?? '')
+        .join(' ');
+      if (body.trim() === '') continue;
+      parts.push(`[${chapter.title}] ${body.slice(0, 900)}`);
+    }
+    return parts.join('\n').slice(0, 12000);
+  }, [chapters, units]);
+
+  // The text an episode is written from.
+  const textOfScope = useCallback((scopeKey) => {
+    if (scopeKey === 'book') return bookDigest;
+    const index = Number(scopeKey);
+    if (!Number.isFinite(index)) return '';
+    return units
+      .filter((unit) => unit.chapterIndex === index)
+      .map((unit) => unit.text ?? '')
+      .join(' ');
+  }, [bookDigest, units]);
+
+  // A new book starts at the chapter being read; the learner's own choice
+  // sticks while the reading position moves.
+  useEffect(() => {
+    const bookId = book?.id ?? '';
+    if (podcastBookRef.current === bookId) return;
+    podcastBookRef.current = bookId;
+    setPodcastScope(String(chapterIndex));
+  }, [book?.id, chapterIndex]);
+
+  // Ask the model for a podcast episode of the chosen scope and keep it.
+  const generatePodcast = useCallback(async () => {
+    const scopeKey = podcastScope === '' ? String(chapterIndex) : podcastScope;
+    const scopeLabel = podcastScopes.find((entry) => entry.key === scopeKey)?.label ?? chapterTitle;
+    const wholeBook = scopeKey === 'book';
+    setPodcastLoading(true);
+    setPodcastError('');
+    try {
+      const result = await askAi('podcast', {
+        title: book?.title ?? '',
+        chapterTitle: wholeBook ? t('podcast.scopeBook') : chapterTitle,
+        scope: wholeBook ? 'book' : 'chapter',
+        text: textOfScope(scopeKey),
+      });
+      const episode = await savePodcast({
+        bookId: book?.id ?? '',
+        chapterKey: scopeKey,
+        scope: scopeLabel,
+        title: result?.title ?? '',
+        summary: result?.summary ?? '',
+        dialogue: result?.dialogue ?? [],
+      });
+      setPodcastEpisodes((current) => [episode, ...current.filter((entry) => entry.id !== episode.id)]);
+      setPodcastActiveId(episode.id);
+      setPodcastLine(-1);
+    } catch (error) {
+      setPodcastError(error?.message ?? t('podcast.failed'));
+    } finally {
+      setPodcastLoading(false);
+    }
+  }, [book?.id, chapterIndex, chapterTitle, podcastScope, podcastScopes, t, textOfScope]);
+
+  // Open the podcast panel and load the episodes of this book.
+  const openPodcast = useCallback(() => {
+    setPodcastOpen(true);
+    void refreshPodcasts();
+  }, [refreshPodcasts]);
+
+  // The playback walks the script line by line. The position lives in a ref,
+  // so the speech callback never reads a stale render.
+  const podcastStateRef = useRef({ episodeId: null, lineIndex: -1 });
+  const podcastEpisodesRef = useRef([]);
+  useEffect(() => { podcastEpisodesRef.current = podcastEpisodes; }, [podcastEpisodes]);
+
+  const speakPodcastLine = useCallback((episodeId, lineIndex) => {
+    const episode = podcastEpisodesRef.current.find((entry) => entry.id === episodeId);
+    if (episode === undefined) return;
+    // The learner's own line stays in the transcript but is not spoken: they
+    // just said it (or typed it), the show answers.
+    let index = lineIndex;
+    let line = episode.dialogue?.[index];
+    while (line !== undefined && line.speaker === 'you') {
+      index += 1;
+      line = episode.dialogue[index];
+    }
+    if (line === undefined || typeof line.text !== 'string' || line.text.trim() === '') {
+      podcastStateRef.current = { episodeId, lineIndex: -1 };
+      setPodcastLine(-1);
+      setPodcastPlaying(false);
+      tts.cancel();
+      // The reading voice comes back when the show is over.
+      tts.setVoice(voiceId);
+      return;
+    }
+    podcastStateRef.current = { episodeId, lineIndex: index };
+    setPodcastActiveId(episodeId);
+    setPodcastLine(index);
+    setPodcastPlaying(true);
+    // Each speaker has its own voice: the show sounds like two people.
+    tts.setVoice(line.speaker === 'guest' ? podcastVoices.guest : podcastVoices.host);
+    tts.speak(line.text, {
+      onEnd: () => {
+        const state = podcastStateRef.current;
+        if (state.episodeId !== episodeId) return;
+        speakPodcastLine(episodeId, state.lineIndex + 1);
+      },
+    });
+  }, [podcastVoices, tts, voiceId]);
+
+  // Stop the podcast when the panel closes: the speech must not keep running
+  // behind a closed panel.
+  const stopPodcast = useCallback(() => {
+    podcastStateRef.current = { episodeId: null, lineIndex: -1 };
+    setPodcastLine(-1);
+    setPodcastPlaying(false);
+    tts.cancel();
+    // The reading voice comes back.
+    tts.setVoice(voiceId);
+  }, [tts, voiceId]);
+
+  // The host answers the learner, and the episode goes on from there. The
+  // learner's own words and the answer stay in the episode, so the transcript
+  // reads like a conversation that really happened.
+  const continuePodcast = useCallback(async (episode, said) => {
+    setPodcastLoading(true);
+    try {
+      const context = episode.dialogue
+        .slice(-6)
+        .map((line) => `${line.speaker}: ${line.text}`)
+        .join('\n');
+      const result = await askAi('podcastReply', {
+        title: book?.title ?? '',
+        chapterTitle: episode.scope ?? '',
+        text: context,
+        said,
+      });
+      const lines = [{ speaker: 'you', text: said }, ...(result?.lines ?? [])];
+      const updated = await savePodcast({ ...episode, dialogue: [...episode.dialogue, ...lines] });
+      // The ref goes first: the playback reads the episode from it, and the
+      // new lines have to be in place before the next line is spoken.
+      const next = podcastEpisodesRef.current.map((entry) => (entry.id === updated.id ? updated : entry));
+      podcastEpisodesRef.current = next;
+      setPodcastEpisodes(next);
+      // The episode continues with the host's answer.
+      speakPodcastLine(updated.id, episode.dialogue.length + 1);
+    } catch (error) {
+      setInterjectError(error?.message ?? t('podcast.interjectFailed'));
+    } finally {
+      setPodcastLoading(false);
+    }
+  }, [book?.title, speakPodcastLine, t]);
+
+  // The learner types instead of talking: the same flow, without a microphone.
+  const interjectText = useCallback(async (text) => {
+    const said = String(text ?? '').trim();
+    if (said === '') return;
+    const episode = podcastEpisodesRef.current.find((entry) => entry.id === podcastActiveId);
+    if (episode === undefined) return;
+    setInterjectError('');
+    // The episode waits for the learner.
+    tts.cancel();
+    setPodcastPlaying(false);
+    await continuePodcast(episode, said);
+  }, [continuePodcast, podcastActiveId, tts]);
+
+  // The learner talks back mid-episode: the podcast waits, the words are
+  // transcribed, and the host answers before the episode goes on.
+  const interject = useCallback(async () => {
+    if (interjecting) {
+      interjectRecorderRef.current?.stop?.();
+      return;
+    }
+    const episode = podcastEpisodesRef.current.find((entry) => entry.id === podcastActiveId);
+    if (episode === undefined) return;
+    setInterjectError('');
+    // The episode waits for the learner.
+    tts.cancel();
+    setPodcastPlaying(false);
+    const recorder = createRecorder({
+      onStop: async (blob) => {
+        setInterjecting(false);
+        interjectRecorderRef.current = null;
+        try {
+          const audio = await blobToBase64(blob);
+          const result = await askAi('asr', { audio, mimeType: blob.type || 'audio/webm' });
+          const said = String(result?.text ?? '').trim();
+          if (said === '') {
+            setInterjectError(t('podcast.interjectEmpty'));
+            return;
+          }
+          await continuePodcast(episode, said);
+        } catch (error) {
+          setInterjectError(error?.message ?? t('podcast.interjectFailed'));
+        }
+      },
+      onError: (error) => {
+        setInterjecting(false);
+        interjectRecorderRef.current = null;
+        setInterjectError(error?.message ?? t('podcast.interjectFailed'));
+      },
+    });
+    interjectRecorderRef.current = recorder;
+    setInterjecting(true);
+    try {
+      await recorder.start();
+    } catch (error) {
+      setInterjecting(false);
+      interjectRecorderRef.current = null;
+      setInterjectError(error?.message ?? t('podcast.interjectFailed'));
+    }
+  }, [continuePodcast, interjecting, podcastActiveId, t, tts]);
+
+  // Leaving the reader stops the speech: the podcast must not follow the
+  // learner out of the book.
+  useEffect(() => () => { tts.cancel(); }, [tts]);
 
   const spokenStates = useMemo(() => {
     if (mode !== 'speak' || spokenResult === null) return null;
@@ -1498,6 +1992,28 @@ export function ReaderView({
         : null,
     ),
     h(
+      'button',
+      {
+        type: 'button',
+        className: 'er-round-icon er-read-extra',
+        title: t('mindmap.open'),
+        'aria-label': t('mindmap.open'),
+        onClick: () => { openMindMap(); },
+      },
+      h(MindMapIcon, { size: 15 }),
+    ),
+    h(
+      'button',
+      {
+        type: 'button',
+        className: 'er-round-icon er-read-extra',
+        title: t('podcast.open'),
+        'aria-label': t('podcast.open'),
+        onClick: () => { openPodcast(); },
+      },
+      h(PodcastIcon, { size: 15 }),
+    ),
+    h(
       'div',
       { className: 'er-read-stats' },
       h('span', { className: 'er-read-stat' }, `${unitWordCount} ${t('reader.words')}`),
@@ -1507,9 +2023,22 @@ export function ReaderView({
     ),
   );
 
+  // Where the learning-modes panel opens: next to the tool that opened it and
+  // below the sticky mode row, so nothing can hide it.
+  const modesPanelStyle = useMemo(() => {
+    if (modesAnchor === null) return { left: 12, top: 12, width: 300 };
+    const viewportWidth = typeof window === 'undefined' ? 1024 : window.innerWidth;
+    const viewportHeight = typeof window === 'undefined' ? 768 : window.innerHeight;
+    const width = 300;
+    const rowBottom = modesRowRef.current?.getBoundingClientRect?.().bottom ?? 0;
+    const left = Math.max(12, Math.min(modesAnchor.left - width - 12, viewportWidth - width - 12));
+    const top = Math.max(12, Math.min(Math.max(modesAnchor.bottom, rowBottom) + 8, viewportHeight - 160));
+    return { left, top, width };
+  }, [modesAnchor]);
+
   const renderModesPanel = () => h(
     'div',
-    { className: 'er-modes-panel' },
+    { className: 'er-modes-panel', style: modesPanelStyle, ref: modesPanelRef },
     [
       ['highlight', t('reader.modeHighlight'), t('reader.modeHighlightHint')],
       ['gloss', t('reader.modeGloss'), t('reader.modeGlossHint')],
@@ -1571,6 +2100,7 @@ export function ReaderView({
       {
         type: 'button',
         className: 'er-read-tool',
+        ref: options.ref,
         title: options.title ?? label,
         'aria-pressed': options.pressed,
         disabled: options.disabled,
@@ -1583,22 +2113,28 @@ export function ReaderView({
       'div',
       { className: 'er-read-tools' },
       tool('modes', h(HighlighterIcon, { size: 17 }), t('reader.toolModes'), {
+        ref: modesButtonRef,
         pressed: modePanelOpen,
-        onClick: () => { setModePanelOpen((value) => !value); },
+        onClick: () => {
+          const rect = modesButtonRef.current?.getBoundingClientRect?.();
+          if (rect !== undefined && rect !== null) {
+            setModesAnchor({ left: rect.left, top: rect.top, bottom: rect.bottom, right: rect.right });
+          }
+          setModePanelOpen((value) => !value);
+        },
       }),
       tool('cloze', h(ClozeIcon, { size: 17 }), t('reader.toolCloze'), {
         pressed: isClozeScope,
         disabled: clozeWords.length === 0,
-        onClick: () => { setScope(isClozeScope ? 'sentence' : 'cloze'); stopSpeaking(); },
+        onClick: () => { setScope(isClozeScope ? 'sentence' : 'cloze'); stopSpeaking(); setModePanelOpen(false); },
       }),
       tool('settings', h(SettingsIcon, { size: 17 }), t('reader.toolSettings'), {
         pressed: settingsOpen,
-        onClick: () => { setSettingsOpen((value) => !value); },
+        onClick: () => { setSettingsOpen((value) => !value); setModePanelOpen(false); },
       }),
       tool('toc', h(ListIcon, { size: 17 }), t('reader.tocTitle'), {
-        onClick: () => { setTocOpen(true); },
+        onClick: () => { setTocOpen(true); setModePanelOpen(false); },
       }),
-      modePanelOpen ? renderModesPanel() : null,
     );
   };
 
@@ -1629,6 +2165,221 @@ export function ReaderView({
     return revealed[`${paragraphIndex}:${sentencePosition}`] ? '' : ' is-blurred-word';
   };
 
+  // The notes of one paragraph: a note belongs to the paragraph whose
+  // sentences it was taken from.
+  const notesOfParagraph = (group) => {
+    const unitIndexes = group?.unitIndexes ?? [];
+    if (unitIndexes.length === 0) return [];
+    return bookNotes.filter((note) => unitIndexes.includes(note.unitIndex));
+  };
+
+  // The text of a paragraph, used as the quote of a note taken on it.
+  const quoteOfParagraph = (group) => {
+    const unitIndexes = group?.unitIndexes ?? [];
+    return unitIndexes.map((unitIndex) => units[unitIndex]?.text ?? '').join(' ').trim();
+  };
+
+  // The translation under a paragraph. It shows when the full-text switch is
+  // on, or when this paragraph was translated on its own.
+  const renderParagraphTranslation = (paragraphIndex) => {
+    const value = translations[paragraphIndex];
+    if (!modes.translate && value === undefined) return null;
+    return h(
+      'div',
+      { className: 'er-translation' },
+      value ?? (translations[paragraphIndex] === '' ? '' : '…'),
+    );
+  };
+
+  // The three buttons in the right gutter of a paragraph: take a note,
+  // translate it, read it aloud.
+  const renderParagraphActions = (group, paragraphIndex) => {
+    const unitIndexes = group?.unitIndexes ?? [];
+    if (unitIndexes.length === 0) return null;
+    const notes = notesOfParagraph(group);
+    const translated = translations[paragraphIndex] !== undefined;
+    const speaking = speakingParagraph === paragraphIndex;
+    const translating = translatingParagraph === paragraphIndex;
+    /**
+     * One gutter button.
+     * @param {string} title - the tooltip and the accessible name.
+     * @param {any} icon - the glyph.
+     * @param {Function} onClick - called with the click event.
+     * @param {string} extra - extra class names for the state.
+     * @param {any} badge - an optional badge on the button.
+     * @returns {any} the element tree.
+     */
+    const action = (title, icon, onClick, extra = '', badge = null) => h(
+      'button',
+      {
+        type: 'button',
+        className: `er-paragraph-action${extra}`,
+        title,
+        'aria-label': title,
+        onClick: (event) => {
+          event.stopPropagation();
+          onClick(event);
+        },
+      },
+      icon,
+      badge,
+    );
+    return h(
+      'div',
+      { className: 'er-paragraph-actions' },
+      action(
+        t('notes.addForParagraph'),
+        h(PencilIcon, { size: 13 }),
+        (event) => { openParagraphNote(group, event.currentTarget); },
+        notes.length > 0 ? ' is-noted' : '',
+        notes.length > 0 ? h('span', { className: 'er-paragraph-note-count' }, String(notes.length)) : null,
+      ),
+      action(
+        translating ? t('reader.translatePending') : t('reader.translateThis'),
+        h(GlobeIcon, { size: 14 }),
+        () => { void translateParagraph(group, paragraphIndex); },
+        translated ? ' is-translated' : '',
+      ),
+      action(
+        speaking ? t('reader.stopThis') : t('reader.playThis'),
+        speaking ? h(PauseIcon, { size: 13 }) : h(PlayIcon, { size: 13 }),
+        () => { speakParagraph(group, paragraphIndex); },
+        speaking ? ' is-speaking' : '',
+      ),
+    );
+  };
+
+  // Open the note editor next to the paragraph it belongs to.
+  const openParagraphNote = (group, element) => {
+    const rect = element?.getBoundingClientRect?.();
+    setNoteEditor({
+      unitIndex: group.unitIndexes[0],
+      unitIndexes: group.unitIndexes,
+      quote: quoteOfParagraph(group).slice(0, 800),
+      rect: rect === undefined || rect === null
+        ? null
+        : { left: rect.left, top: rect.top, bottom: rect.bottom, right: rect.right },
+    });
+    setNoteDraft('');
+    setNoteError('');
+  };
+
+  // Save the note the learner is writing.
+  const saveParagraphNote = useCallback(async () => {
+    const text = noteDraft.trim();
+    if (text === '' || noteEditor === null) return;
+    try {
+      await addNote({
+        bookId: book?.id ?? '',
+        unitIndex: noteEditor.unitIndex,
+        quote: noteEditor.quote,
+        text,
+      });
+      setNoteDraft('');
+      setNoteError('');
+      setNotesVersion((value) => value + 1);
+    } catch (reason) {
+      setNoteError(reason?.message ?? t('notes.saveFailed'));
+    }
+  }, [book?.id, noteDraft, noteEditor, t]);
+
+  // Drop one of the notes of this paragraph.
+  const dropParagraphNote = useCallback(async (id) => {
+    try {
+      await removeNote(id);
+      setNotesVersion((value) => value + 1);
+    } catch (reason) {
+      setNoteError(reason?.message ?? t('notes.saveFailed'));
+    }
+  }, [t]);
+
+  // Where the note editor opens: towards the rail, which is the space next to
+  // the text; when that is too narrow, it opens to the left and stays glued to
+  // the button it belongs to.
+  const noteEditorStyle = useMemo(() => {
+    if (noteEditor?.rect == null) return { left: 12, top: 12, width: 320 };
+    const viewportWidth = typeof window === 'undefined' ? 1024 : window.innerWidth;
+    const viewportHeight = typeof window === 'undefined' ? 768 : window.innerHeight;
+    const width = 320;
+    const rect = noteEditor.rect;
+    const left = viewportWidth - rect.right >= width + 16
+      ? rect.right + 8
+      : Math.max(12, rect.right - width);
+    const top = Math.max(12, Math.min(rect.top - 8, viewportHeight - 180));
+    return { left, top, width };
+  }, [noteEditor]);
+
+  const renderNoteEditor = () => {
+    if (noteEditor === null) return null;
+    const notes = bookNotes.filter((note) => noteEditor.unitIndexes.includes(note.unitIndex));
+    return h(
+      'div',
+      { className: 'er-note-editor', style: noteEditorStyle, ref: noteEditorRef },
+      h(
+        'div',
+        { className: 'er-note-editor-head' },
+        h('span', { className: 'er-note-editor-title' }, t('notes.paragraphTitle')),
+        h(
+          'button',
+          {
+            type: 'button',
+            className: 'er-note-editor-close',
+            title: t('notes.close'),
+            'aria-label': t('notes.close'),
+            onClick: () => { setNoteEditor(null); },
+          },
+          '✕',
+        ),
+      ),
+      h('div', { className: 'er-note-editor-quote' }, `“${noteEditor.quote}”`),
+      h('textarea', {
+        className: 'er-note-editor-input',
+        value: noteDraft,
+        rows: 3,
+        placeholder: t('notes.paragraphPlaceholder'),
+        onChange: (event) => { setNoteDraft(event.target.value); },
+      }),
+      h(
+        'div',
+        { className: 'er-note-editor-actions' },
+        h(
+          'button',
+          {
+            type: 'button',
+            className: 'er-btn er-btn-primary',
+            disabled: noteDraft.trim() === '',
+            onClick: () => { void saveParagraphNote(); },
+          },
+          h(NoteIcon, { size: 13 }),
+          t('notes.save'),
+        ),
+      ),
+      noteError === '' ? null : h('div', { className: 'er-note-editor-error' }, noteError),
+      notes.length === 0
+        ? null
+        : h(
+          'div',
+          { className: 'er-note-editor-list' },
+          notes.map((note) => h(
+            'div',
+            { key: note.id, className: 'er-note-editor-item' },
+            h('div', { className: 'er-note-editor-text' }, note.text),
+            h(
+              'button',
+              {
+                type: 'button',
+                className: 'er-note-editor-delete',
+                title: t('notes.delete'),
+                'aria-label': t('notes.delete'),
+                onClick: () => { void dropParagraphNote(note.id); },
+              },
+              h(TrashIcon, { size: 12 }),
+            ),
+          )),
+        ),
+    );
+  };
+
   const renderPlainParagraph = (group, key) => {
     const paragraphIndex = paragraphs.indexOf(group);
     const sentences = [];
@@ -1643,35 +2394,42 @@ export function ReaderView({
     }
     return h(
       'div',
-      { key, className: 'er-page-paragraph is-context' },
-      h('p', { className: 'er-paragraph-body' }, sentences.map((bucket) => h(
-        'span',
-        {
-          key: bucket.position,
-          className: `er-sentence${sentenceClass(paragraphIndex, bucket.position)}`,
-          onClick: () => {
-            if (!modes.blur) return;
-            const id = `${paragraphIndex}:${bucket.position}`;
-            setRevealed((current) => ({ ...current, [id]: true }));
-          },
-        },
-        bucket.words.flatMap((word, position) => [
-          h(
+      { key, className: 'er-paragraph-row' },
+      h(
+        'div',
+        { className: 'er-paragraph-main' },
+        h(
+          'div',
+          { className: 'er-page-paragraph is-context' },
+          h('p', { className: 'er-paragraph-body' }, sentences.map((bucket) => h(
             'span',
             {
-              key: `${key}-${bucket.position}-${position}`,
-              className: `er-word${stateClass(word)}${wordBlurClass(paragraphIndex, bucket.position)}`,
-              title: t('reader.clickToLookup'),
-              onClick: (event) => { event.stopPropagation(); openWordCard(word, event); },
+              key: bucket.position,
+              className: `er-sentence${sentenceClass(paragraphIndex, bucket.position)}`,
+              onClick: () => {
+                if (!modes.blur) return;
+                const id = `${paragraphIndex}:${bucket.position}`;
+                setRevealed((current) => ({ ...current, [id]: true }));
+              },
             },
-            bionicText(word.text),
-          ),
-          ' ',
-        ]),
-      ))),
-      modes.translate
-        ? h('div', { className: 'er-translation' }, translations[paragraphIndex] ?? (translations[paragraphIndex] === '' ? '' : '…'))
-        : null,
+            bucket.words.flatMap((word, position) => [
+              h(
+                'span',
+                {
+                  key: `${key}-${bucket.position}-${position}`,
+                  className: `er-word${stateClass(word)}${wordBlurClass(paragraphIndex, bucket.position)}`,
+                  title: t('reader.clickToLookup'),
+                  onClick: (event) => { event.stopPropagation(); openWordCard(word, event); },
+                },
+                bionicText(word.text),
+              ),
+              ' ',
+            ]),
+          ))),
+          renderParagraphTranslation(paragraphIndex),
+        ),
+      ),
+      renderParagraphActions(group, paragraphIndex),
     );
   };
 
@@ -1738,7 +2496,7 @@ export function ReaderView({
 
   const renderModeRow = () => h(
     'div',
-    { className: 'er-modes' },
+    { className: 'er-modes', ref: modesRowRef },
     h(
       'button',
       { type: 'button', className: 'er-mode', 'aria-pressed': mode === 'listen', onClick: () => { setMode('listen'); stopSpeaking(); } },
@@ -1906,11 +2664,18 @@ export function ReaderView({
             if (groupIndex !== currentParagraphIndex) return renderPlainParagraph(group, groupIndex);
             return h(
               'div',
-              { key: groupIndex, className: 'er-page-paragraph is-active', ref: activeRef },
-              h('p', { className: 'er-paragraph-body' }, renderParagraph()),
-              modes.translate
-                ? h('div', { className: 'er-translation' }, translations[groupIndex] ?? (translations[groupIndex] === '' ? '' : '…'))
-                : null,
+              { key: groupIndex, className: 'er-paragraph-row is-active' },
+              h(
+                'div',
+                { className: 'er-paragraph-main' },
+                h(
+                  'div',
+                  { className: 'er-page-paragraph is-active', ref: activeRef },
+                  h('p', { className: 'er-paragraph-body' }, renderParagraph()),
+                  renderParagraphTranslation(groupIndex),
+                ),
+              ),
+              renderParagraphActions(group, groupIndex),
             );
           }),
         ),
@@ -2053,5 +2818,62 @@ export function ReaderView({
         onRemove: removeWord,
         onOpenWordList: () => { setCard(null); onOpenWordList?.(); },
       }),
+    // The two floating panels live in the body: they are anchored to the
+    // reader, but they must not be clipped by it.
+    floating(modePanelOpen ? renderModesPanel() : null),
+    floating(noteEditor === null ? null : renderNoteEditor()),
+    mindMapOpen
+      ? h(MindMapView, {
+        t,
+        scope: chapterTitle,
+        data: mindMapView,
+        loading: mindMapLoading,
+        error: mindMapError,
+        onClose: () => { setMindMapOpen(false); },
+        onRegenerate: () => { void generateMindMap(); },
+        onJump: jumpFromMindMap,
+      })
+      : null,
+    podcastOpen
+      ? h(PodcastView, {
+        t,
+        scope: chapterTitle,
+        scopes: podcastScopes,
+        scopeKey: podcastScope === '' ? String(chapterIndex) : podcastScope,
+        onScope: (key) => { setPodcastScope(String(key)); },
+        episodes: podcastEpisodes,
+        activeId: podcastActiveId,
+        lineIndex: podcastLine,
+        playing: podcastPlaying,
+        loading: podcastLoading,
+        error: podcastError,
+        rate,
+        onClose: () => { setPodcastOpen(false); stopPodcast(); },
+        onGenerate: () => { void generatePodcast(); },
+        onSelect: (episodeId) => { setPodcastActiveId(episodeId); setPodcastLine(-1); },
+        onPlay: (episodeId, lineIndex) => { speakPodcastLine(episodeId, lineIndex); },
+        onStop: () => { stopPodcast(); },
+        onRate: (next) => { setRate(next); tts.setRate(next); },
+        onInterject: () => { void interject(); },
+        interjecting,
+        interjectError,
+        onInterjectText: (text) => { void interjectText(text); },
+        canRecord,
+        voices: englishVoices.map((voice) => ({ id: voice.id, name: voice.name })),
+        hostVoice: podcastVoices.host,
+        guestVoice: podcastVoices.guest,
+        onHostVoice: (id) => { setPodcastVoices((current) => ({ ...current, host: id })); },
+        onGuestVoice: (id) => { setPodcastVoices((current) => ({ ...current, guest: id })); },
+        onDelete: (episodeId) => {
+          void removePodcast(episodeId).then(() => {
+            if (podcastActiveId === episodeId) {
+              setPodcastActiveId(null);
+              setPodcastLine(-1);
+            }
+            void refreshPodcasts();
+          });
+        },
+      })
+      : null,
   );
 }

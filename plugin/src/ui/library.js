@@ -55,13 +55,18 @@ function initialsOf(title) {
 
 /**
  * A small modal used by the per-book menu.
+ *
+ * The wide variant carries the mind map and the podcast player, which need
+ * more room than a form.
+ *
  * @param {object} props
  * @param {string} props.title
  * @param {Function} props.onClose
  * @param {Function} props.children
+ * @param {'default'|'wide'} [props.size] - the width of the modal.
  * @returns {any} the element tree
  */
-export function Modal({ title, onClose, children }) {
+export function Modal({ title, onClose, children, size = 'default' }) {
   useEffect(() => {
     const onKeyDown = (event) => { if (event.key === 'Escape') onClose(); };
     document.addEventListener('keydown', onKeyDown);
@@ -72,7 +77,7 @@ export function Modal({ title, onClose, children }) {
     { className: 'er-modal-mask', onClick: onClose },
     h(
       'div',
-      { className: 'er-modal', onClick: (event) => { event.stopPropagation(); } },
+      { className: `er-modal${size === 'wide' ? ' is-wide' : ''}`, onClick: (event) => { event.stopPropagation(); } },
       h(
         'div',
         { className: 'er-modal-head' },

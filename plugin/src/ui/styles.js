@@ -115,6 +115,11 @@ export const STYLE = `
 .er-label{font-size:12px;color:var(--dsw-alias-label-tertiary)}
 .er-wordlist-button{display:inline-flex;align-items:center;gap:6px;flex:none;appearance:none;border:1px solid var(--dsw-alias-border-l1);border-radius:var(--dsw-radius-md,8px);padding:4px 10px;background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-secondary);font:inherit;font-size:12px;cursor:pointer}
 .er-wordlist-button:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}
+/* The mind map and the podcast sit next to the vocabulary button. They are
+   icon only: the bar is one line, and a label each would push the reading
+   figures off the edge. */
+.er-read-extra{width:28px;height:28px;flex:none;color:var(--dsw-alias-label-secondary)}
+.er-read-extra:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}
 .er-wordlist-count{display:inline-flex;align-items:center;justify-content:center;min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:var(--dsw-alias-state-business-primary);color:var(--dsw-alias-bg-base);font-size:10px;line-height:1}
 .er-wordcard{position:fixed;z-index:1100;box-sizing:border-box;padding:14px 16px;border-radius:var(--dsw-radius-lg,12px);background:var(--dsw-alias-bg-overlay);border:1px solid var(--dsw-alias-border-l1);box-shadow:var(--dsw-elevation-prominent);font-size:13px;color:var(--dsw-alias-label-primary)}
 .er-wordcard-head{display:flex;align-items:flex-start;gap:10px}
@@ -271,6 +276,8 @@ export const STYLE = `
 .er-book-menu-item.is-active{font-weight:600;color:var(--dsw-alias-state-business-primary)}
 .er-modal-mask{position:fixed;inset:0;z-index:1200;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.35)}
 .er-modal{width:min(460px,92vw);max-height:80vh;overflow:auto;padding:16px 18px;border-radius:var(--dsw-radius-lg,12px);background:var(--dsw-alias-bg-layer-1);border:1px solid var(--dsw-alias-border-l1);box-shadow:var(--dsw-elevation-prominent);color:var(--dsw-alias-label-primary)}
+/* The mind map and the podcast player need more room than a form. */
+.er-modal.is-wide{width:min(980px,94vw);max-height:86vh}
 .er-modal-head{display:flex;align-items:center;gap:10px;margin-bottom:12px}
 .er-modal-title{flex:1;font-size:14px;font-weight:600}
 .er-modal-foot{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}
@@ -362,8 +369,52 @@ export const STYLE = `
 .er-page-paragraph.is-active{font-size:var(--er-text-size, 19px);line-height:2;color:var(--dsw-alias-label-primary)}
 .er-sentence.is-active-sentence{background:var(--dsw-alias-bg-layer-2);border-radius:4px;box-shadow:0 0 0 3px var(--dsw-alias-bg-layer-2)}
 
+/* Every paragraph carries a column of buttons in its right gutter: take a
+   note, translate it, read it aloud. The text keeps its own column; the
+   buttons only take the gutter next to it. */
+.er-paragraph-row{display:flex;align-items:flex-start;gap:10px}
+.er-paragraph-main{flex:1;min-width:0}
+.er-paragraph-actions{flex:none;display:flex;flex-direction:column;align-items:center;gap:2px}
+.er-paragraph-action{position:relative;flex:none;display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;padding:0;border:0;border-radius:8px;background:transparent;color:var(--dsw-alias-label-tertiary);cursor:pointer;transition:opacity .15s ease,color .15s ease,background-color .15s ease}
+/* The buttons wait for the pointer: they are hidden until the paragraph is
+   hovered (or the button itself is focused). A touch screen has no hover,
+   so there they stay where they are. */
+@media (hover: hover){
+  .er-paragraph-action{opacity:0}
+  .er-paragraph-row:hover .er-paragraph-action,.er-paragraph-action:focus-visible{opacity:1}
+}
+.er-paragraph-action:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}
+.er-paragraph-action:focus-visible{outline:var(--dsw-focus-ring-width,2px) solid var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary));outline-offset:1px}
+/* The buttons that already did something keep their mark: a note, a
+   translation, a paragraph being read. */
+.er-paragraph-action.is-noted{opacity:1;color:var(--dsw-alias-state-warn-primary)}
+.er-paragraph-action.is-translated{opacity:1;color:var(--dsw-alias-state-success-primary)}
+.er-paragraph-action.is-speaking{opacity:1;color:var(--dsw-alias-state-business-primary)}
+.er-paragraph-note-count{position:absolute;top:-4px;right:-4px;min-width:14px;height:14px;padding:0 3px;border-radius:7px;background:var(--dsw-alias-state-warn-primary);color:var(--dsw-alias-bg-base);font-size:9px;line-height:14px;text-align:center}
 
-.er-modes-panel{position:absolute;z-index:30;top:0;right:64px;width:280px;padding:10px 12px;border-radius:var(--dsw-radius-md,8px);background:var(--dsw-alias-bg-overlay);border:1px solid var(--dsw-alias-border-l1);box-shadow:var(--dsw-elevation-prominent)}
+/* The note editor floats next to the paragraph it belongs to. */
+.er-note-editor{position:fixed;z-index:1200;box-sizing:border-box;max-height:min(62vh,460px);overflow:auto;padding:12px 14px;border-radius:var(--dsw-radius-md,8px);background:var(--dsw-alias-bg-overlay);border:1px solid var(--dsw-alias-border-l1);box-shadow:var(--dsw-elevation-prominent);font-size:13px;color:var(--dsw-alias-label-primary)}
+.er-note-editor-head{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.er-note-editor-title{flex:1;min-width:0;font-size:12.5px;font-weight:500;color:var(--dsw-alias-label-primary)}
+.er-note-editor-close{appearance:none;border:0;background:transparent;color:var(--dsw-alias-label-tertiary);cursor:pointer;padding:2px 4px;border-radius:6px;font-size:12px;line-height:1}
+.er-note-editor-close:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}
+.er-note-editor-quote{font-size:11.5px;line-height:1.55;color:var(--dsw-alias-label-tertiary);font-style:italic;margin-bottom:8px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.er-note-editor-input{width:100%;box-sizing:border-box;padding:8px 10px;border-radius:var(--dsw-radius-sm,6px);border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);font:inherit;font-size:12.5px;line-height:1.6;resize:vertical}
+.er-note-editor-input:focus{outline:none;border-color:var(--dsw-alias-state-business-primary)}
+.er-note-editor-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:8px}
+.er-note-editor-list{display:flex;flex-direction:column;gap:6px;margin-top:10px;padding-top:10px;border-top:1px solid var(--dsw-alias-border-l1)}
+.er-note-editor-item{display:flex;align-items:flex-start;gap:8px;padding:7px 9px;border-radius:var(--dsw-radius-sm,6px);background:var(--dsw-alias-bg-layer-2)}
+.er-note-editor-text{flex:1;min-width:0;font-size:12px;line-height:1.55;color:var(--dsw-alias-label-secondary);white-space:pre-wrap;word-break:break-word}
+.er-note-editor-delete{appearance:none;border:0;background:transparent;color:var(--dsw-alias-label-tertiary);cursor:pointer;padding:2px;border-radius:6px;display:inline-flex;flex:none}
+.er-note-editor-delete:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-state-error-primary)}
+.er-note-editor-error{margin-top:8px;font-size:11.5px;color:var(--dsw-alias-state-error-primary)}
+
+
+/* The learning-modes panel floats above the page: it is anchored to the tool
+   that opened it and positioned in viewport coordinates, so the sticky mode
+   row can never paint over it and it can never be cut off by a scroll
+   container. */
+.er-modes-panel{position:fixed;z-index:1200;box-sizing:border-box;max-height:min(62vh,440px);overflow:auto;padding:10px 12px;border-radius:var(--dsw-radius-md,8px);background:var(--dsw-alias-bg-overlay);border:1px solid var(--dsw-alias-border-l1);box-shadow:var(--dsw-elevation-prominent)}
 .er-mode-row{display:flex;align-items:center;gap:10px;padding:7px 0;cursor:pointer}
 .er-mode-row+.er-mode-row{border-top:1px solid var(--dsw-alias-border-l1)}
 .er-mode-row-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}

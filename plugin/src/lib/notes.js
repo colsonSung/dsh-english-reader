@@ -45,11 +45,32 @@ export function createMemoryBackend(seed = []) {
 }
 
 /**
+ * The backend used when the caller does not pass one.
+ *
+ * The tests replace it with {@link setNotesBackend} so the reader can be
+ * driven without a browser database.
+ *
+ * @type {{list: Function, get: Function, put: Function, remove: Function}|null}
+ */
+let backendOverride = null;
+
+/**
+ * Replace the backend the notes are read from and written to.
+ *
+ * @param {{list: Function, get: Function, put: Function, remove: Function}|null} backend - the backend, or null to restore the local database.
+ * @returns {void}
+ */
+export function setNotesBackend(backend) {
+  backendOverride = backend ?? null;
+}
+
+/**
  * The backend the notes are read from and written to.
  *
  * @returns {{list: Function, get: Function, put: Function, remove: Function}} the backend.
  */
 function defaultBackend() {
+  if (backendOverride !== null) return backendOverride;
   return {
     list: async () => (await withStore('readonly', (store) => store.getAll(), NOTES_STORE_NAME)) ?? [],
     get: async (id) => withStore('readonly', (store) => store.get(id), NOTES_STORE_NAME),

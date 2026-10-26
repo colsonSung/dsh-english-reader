@@ -56,18 +56,17 @@ function format(template, values) {
  * When the word was collected: today, yesterday, or the day itself.
  * @param {number} timestamp
  * @param {number} [now]
- * @param {(key: string) => string} t - the locale seat.
  * @returns {string}
  */
-function formatAddedAt(timestamp, now = Date.now(), t = (key) => key) {
+function formatAddedAt(timestamp, now = Date.now()) {
   if (!Number.isFinite(timestamp)) return '';
   const date = new Date(timestamp);
   const today = new Date(now);
   const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
   const startOfYesterday = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1).getTime();
-  if (timestamp >= startOfToday) return t('vocab.today');
-  if (timestamp >= startOfYesterday) return t('vocab.yesterday');
-  return t('vocab.date', { month: date.getMonth() + 1, day: date.getDate() });
+  if (timestamp >= startOfToday) return '今天';
+  if (timestamp >= startOfYesterday) return '昨天';
+  return `${date.getMonth() + 1}月${date.getDate()}日`;
 }
 
 /**
@@ -237,7 +236,7 @@ export function WordList({ t, open, onClose, onOpenEntry, onReview, variant = 'd
       h(
         'div',
         { className: 'er-wordlist-meta' },
-        h('span', { className: 'er-wordlist-time' }, formatAddedAt(entry.addedAt, Date.now(), t)),
+        h('span', { className: 'er-wordlist-time' }, formatAddedAt(entry.addedAt)),
         entry.bookTitle ? h('span', { className: 'er-wordlist-book' }, entry.bookTitle) : null,
       ),
     ),

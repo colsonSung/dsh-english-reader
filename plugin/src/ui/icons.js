@@ -235,6 +235,55 @@ export function ExitIcon(props) {
   });
 }
 
+/** A pencil: write a note. */
+export function PencilIcon(props) {
+  return glyph({
+    ...props,
+    children: [
+      h('path', { key: 'a', d: 'M11.9 2.6l1.5 1.5-8.2 8.2-2.1.6.6-2.1z' }),
+      h('path', { key: 'b', d: 'M10.2 4.3l1.5 1.5' }),
+    ],
+  });
+}
+
+/** A mind map: one centre with branches reaching out of it. */
+export function MindMapIcon(props) {
+  return glyph({
+    ...props,
+    children: [
+      h('path', { key: 'a', d: 'M6.3 6.5 3.4 4.4M6.3 8H3.4M6.3 9.5l-2.9 2.1' }),
+      h('circle', { key: 'b', cx: 7.8, cy: 8, r: 1.7 }),
+      h('circle', { key: 'c', cx: 2.6, cy: 3.7, r: 1.2 }),
+      h('circle', { key: 'd', cx: 2.6, cy: 8, r: 1.2 }),
+      h('circle', { key: 'e', cx: 2.6, cy: 12.3, r: 1.2 }),
+    ],
+  });
+}
+
+/** Headphones: an audio episode. */
+export function PodcastIcon(props) {
+  return glyph({
+    ...props,
+    children: [
+      h('path', { key: 'a', d: 'M3.2 10.4V9a4.8 4.8 0 0 1 9.6 0v1.4' }),
+      h('path', { key: 'b', d: 'M3.2 10.4h1.3a.9.9 0 0 1 .9.9v1.9a.9.9 0 0 1-.9.9H3.9a.7.7 0 0 1-.7-.7z' }),
+      h('path', { key: 'c', d: 'M12.8 10.4h-1.3a.9.9 0 0 0-.9.9v1.9a.9.9 0 0 0 .9.9h.6a.7.7 0 0 0 .7-.7z' }),
+    ],
+  });
+}
+
+/** A globe: the translation of a paragraph. */
+export function GlobeIcon(props) {
+  return glyph({
+    ...props,
+    children: [
+      h('circle', { key: 'a', cx: 8, cy: 8, r: 6 }),
+      h('ellipse', { key: 'b', cx: 8, cy: 8, rx: 2.6, ry: 6 }),
+      h('path', { key: 'c', d: 'M2.3 6.3h11.4M2.3 9.7h11.4' }),
+    ],
+  });
+}
+
 /** A note: a page with lines on it. */
 export function NoteIcon(props) {
   return glyph({

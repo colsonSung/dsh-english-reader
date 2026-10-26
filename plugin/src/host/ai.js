@@ -14,10 +14,19 @@
  */
 
 /** The methods the client half may ask for. */
-export const AI_METHODS = Object.freeze(['word', 'translate', 'breakdown']);
+export const AI_METHODS = Object.freeze(['word', 'translate', 'breakdown', 'mindmap', 'podcast', 'podcastReply']);
 
 /** Wall-clock budget for one request, covering the JSON retry as well. */
 const DEFAULT_TIMEOUT_MS = 30000;
+
+/**
+ * How much of a chapter goes into one model request.
+ *
+ * The model is asked for an outline, not for a retelling of every sentence, so
+ * a long chapter is cut rather than dropped: its head carries the argument the
+ * outline is built on.
+ */
+const MAX_SOURCE_CHARS = 12000;
 
 /** Sampling temperature: the answer is a fact sheet, not prose. */
 const TEMPERATURE = 0.2;
@@ -60,6 +69,38 @@ const SYSTEM_PROMPTS = {
     '  structure: 成分数组，每条形如 { "token": "句子成分或短语", "note": "中文说明" }，按句子顺序排列',
     '  translation: 整句的中文翻译',
     '  simplified: 用简单句重述同一句话的说法',
+    '所有字段都必须出现。',
+  ].join('\n'),
+  mindmap: [
+    '你是一名英语学习助手，负责把一章英文内容整理成一张思维导图。',
+    '只输出一个 JSON 对象：不要使用 Markdown 代码块，不要输出解释、前言或结尾语。',
+    'JSON 字段说明：',
+    '  title: 中心主题，10 个字以内',
+    '  branches: 一级分支数组，3 到 6 条，每条形如 { "label": "分支标题", "quote": "原文里代表这个分支的一句英文", "items": [ { "label": "要点", "note": "一句话补充，可为空字符串", "quote": "原文里对应这个要点的一句英文" } ] }',
+    '  每个分支的 items 为 2 到 4 条；要点要用章节里真实出现的内容，不要编造。',
+    '  label 与 note 都用中文，note 不超过 30 个字。',
+    '  quote 必须是从原文里**逐字抄下来**的一句英文（不超过 12 个词），学习者靠它在书里跳回这一段；找不到对应原句时给空字符串。',
+    '所有字段都必须出现。',
+  ].join('\n'),
+  podcast: [
+    '你是一名英语播客编剧，负责把一章英文内容改写成一段双人对话播客。',
+    '只输出一个 JSON 对象：不要使用 Markdown 代码块，不要输出解释、前言或结尾语。',
+    'JSON 字段说明：',
+    '  title: 本期播客的标题（英文，不超过 12 个词）',
+    '  summary: 一句话导语（英文，不超过 30 个词）',
+    '  dialogue: 对话数组，8 到 16 条，每条形如 { "speaker": "host" 或 "guest", "text": "这句台词" }',
+    '  host 是主持人，负责提问和串场；guest 是嘉宾，负责讲解。',
+    '  所有台词都必须用英文，内容只围绕给定的范围，不要编造没有的情节。',
+    '  每句台词 20 到 60 个词，口语化，适合朗读。',
+    '所有字段都必须出现。',
+  ].join('\n'),
+  podcastReply: [
+    '你是一档英语播客的主持人。学员正在听节目时插话，你要自然地接住它，再把这期节目继续讲下去。',
+    '只输出一个 JSON 对象：不要使用 Markdown 代码块，不要输出解释、前言或结尾语。',
+    'JSON 字段说明：',
+    '  lines: 台词数组，2 到 4 条，每条形如 { "speaker": "host" 或 "guest", "text": "这句台词" }',
+    '  先回应学员刚说的话，再顺着节目原来的话题继续。',
+    '  所有台词用英文，语气自然口语化，每句 20 到 60 个词，适合朗读。',
     '所有字段都必须出现。',
   ].join('\n'),
 };
@@ -249,6 +290,161 @@ const SPECS = {
         translation: text(raw?.translation),
         simplified: text(raw?.simplified),
       };
+    },
+  },
+  mindmap: {
+    maxTokens: 3000,
+    /**
+     * @param {any} payload - the client payload.
+     * @returns {{title: string, chapterTitle: string, text: string}} the checked input.
+     */
+    validate(payload) {
+      const source = text(payload?.text);
+      if (source === '') throw aiError('缺少要整理的章节内容');
+      return {
+        title: text(payload?.title),
+        chapterTitle: text(payload?.chapterTitle),
+        text: source.slice(0, MAX_SOURCE_CHARS),
+      };
+    },
+    /**
+     * @param {{title: string, chapterTitle: string, text: string}} request - the checked input.
+     * @returns {string} the user prompt.
+     */
+    user(request) {
+      const header = [
+        request.title === '' ? '' : `书名：${request.title}`,
+        request.chapterTitle === '' ? '' : `章节：${request.chapterTitle}`,
+      ].filter((line) => line !== '').join('\n');
+      return `${header}\n\n请把下面这一章整理成一张思维导图：\n${request.text}`;
+    },
+    /**
+     * @param {any} raw - the model's JSON object.
+     * @returns {object} the client result.
+     */
+    normalize(raw) {
+      const branches = (Array.isArray(raw?.branches) ? raw.branches : [])
+        .filter((branch) => branch !== null && typeof branch === 'object')
+        .map((branch) => ({
+          label: text(branch.label),
+          // The quote is how the learner gets back to the passage: the client
+          // looks it up in the chapter and turns it into a jump target.
+          quote: text(branch.quote),
+          items: (Array.isArray(branch.items) ? branch.items : [])
+            .filter((item) => item !== null && typeof item === 'object')
+            .map((item) => ({ label: text(item.label), note: text(item.note), quote: text(item.quote) }))
+            .slice(0, 6),
+        }))
+        .filter((branch) => branch.label !== '')
+        .slice(0, 8);
+      return { title: text(raw?.title), branches };
+    },
+  },
+  podcast: {
+    maxTokens: 4000,
+    /**
+     * @param {any} payload - the client payload.
+     * @returns {{title: string, chapterTitle: string, scope: string, text: string}} the checked input.
+     */
+    validate(payload) {
+      const source = text(payload?.text);
+      if (source === '') throw aiError('缺少要改写的章节内容');
+      return {
+        title: text(payload?.title),
+        chapterTitle: text(payload?.chapterTitle),
+        scope: payload?.scope === 'book' ? 'book' : 'chapter',
+        text: source.slice(0, MAX_SOURCE_CHARS),
+      };
+    },
+    /**
+     * @param {{title: string, chapterTitle: string, scope: string, text: string}} request - the checked input.
+     * @returns {string} the user prompt.
+     */
+    user(request) {
+      const wholeBook = request.scope === 'book';
+      const header = [
+        request.title === '' ? '' : `书名：${request.title}`,
+        wholeBook
+          ? '范围：全书'
+          : (request.chapterTitle === '' ? '' : `章节：${request.chapterTitle}`),
+      ].filter((line) => line !== '').join('\n');
+      const ask = wholeBook
+        ? '请把下面这本书改写成一段双人对话播客，覆盖全书的主要脉络：'
+        : '请把下面这一章改写成一段双人对话播客：';
+      return `${header}\n\n${ask}\n${request.text}`;
+    },
+    /**
+     * @param {any} raw - the model's JSON object.
+     * @returns {object} the client result.
+     */
+    normalize(raw) {
+      const dialogue = (Array.isArray(raw?.dialogue) ? raw.dialogue : [])
+        .filter((line) => line !== null && typeof line === 'object')
+        .map((line) => {
+          const speaker = text(line.speaker).toLowerCase();
+          return {
+            speaker: speaker.includes('host') || speaker.includes('主持') ? 'host' : 'guest',
+            text: text(line.text).slice(0, 800),
+          };
+        })
+        .filter((line) => line.text !== '')
+        .slice(0, 24);
+      return { title: text(raw?.title), summary: text(raw?.summary), dialogue };
+    },
+  },
+  podcastReply: {
+    maxTokens: 2000,
+    /**
+     * @param {any} payload - the client payload.
+     * @returns {{title: string, chapterTitle: string, text: string, said: string}} the checked input.
+     */
+    validate(payload) {
+      const said = text(payload?.said);
+      if (said === '') throw aiError('缺少学员说的话');
+      return {
+        title: text(payload?.title),
+        chapterTitle: text(payload?.chapterTitle),
+        text: text(payload?.text).slice(0, 4000),
+        said: said.slice(0, 1000),
+      };
+    },
+    /**
+     * @param {{title: string, chapterTitle: string, text: string, said: string}} request - the checked input.
+     * @returns {string} the user prompt.
+     */
+    user(request) {
+      const header = [
+        request.title === '' ? '' : `书名：${request.title}`,
+        request.chapterTitle === '' ? '' : `章节：${request.chapterTitle}`,
+      ].filter((line) => line !== '').join('\n');
+      const soFar = request.text === '' ? '（节目刚开始）' : request.text;
+      return [
+        header,
+        '',
+        `节目到目前为止的对话：\n${soFar}`,
+        '',
+        `学员插话：${request.said}`,
+        '',
+        '请接住学员的插话，把这期节目继续讲下去。',
+      ].join('\n');
+    },
+    /**
+     * @param {any} raw - the model's JSON object.
+     * @returns {object} the client result.
+     */
+    normalize(raw) {
+      const lines = (Array.isArray(raw?.lines) ? raw.lines : [])
+        .filter((line) => line !== null && typeof line === 'object')
+        .map((line) => {
+          const speaker = text(line.speaker).toLowerCase();
+          return {
+            speaker: speaker.includes('guest') || speaker.includes('嘉宾') ? 'guest' : 'host',
+            text: text(line.text).slice(0, 800),
+          };
+        })
+        .filter((line) => line.text !== '')
+        .slice(0, 6);
+      return { lines };
     },
   },
 };

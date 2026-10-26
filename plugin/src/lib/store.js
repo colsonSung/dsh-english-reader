@@ -6,12 +6,14 @@
  */
 
 const DB_NAME = 'english-reader';
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 const STORE_NAME = 'books';
 /** The vocabulary list shares the database with the shelf. */
 export const VOCAB_STORE_NAME = 'vocabulary';
 /** The reader's notes share it as well. */
 export const NOTES_STORE_NAME = 'notes';
+/** The podcast scripts share it as well. */
+export const PODCAST_STORE_NAME = 'podcasts';
 
 /**
  * @typedef {object} BookRecord
@@ -52,6 +54,11 @@ function openDatabase() {
         const notes = db.createObjectStore(NOTES_STORE_NAME, { keyPath: 'id' });
         // The notes of one book are read together.
         notes.createIndex('bookId', 'bookId', { unique: false });
+      }
+      if (!db.objectStoreNames.contains(PODCAST_STORE_NAME)) {
+        const podcasts = db.createObjectStore(PODCAST_STORE_NAME, { keyPath: 'id' });
+        // The episodes of one book are read together.
+        podcasts.createIndex('bookId', 'bookId', { unique: false });
       }
     };
     request.onsuccess = () => {

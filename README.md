@@ -36,10 +36,11 @@ for a tapped word, and the vocabulary list.
 | --- | --- |
 | **Import** | drag in an **EPUB, TXT, Markdown, HTML or PDF**; PDF is loaded through a lazy chunk, so the first screen stays fast |
 | **Library** | a shelf with cover thumbnails (or a list), search, and three read statistics: time read, time played, reading speed |
-| **Per book** | listen straight from the cover, word frequency, book details, rename, delete, and an AI-drawn cover when the book has none |
-| **Listen** | read the current practice unit aloud with word-level highlighting; adjustable speed (0.5x–2x) and voice, and a loop |
+| **Per book** | listen straight from the cover — the play button sits on the artwork and is always there, no hovering — plus word frequency, book details, rename, delete, and an AI-drawn cover when the book has none |
+| **Listen** | read the current practice unit aloud with word-level highlighting; adjustable speed (0.5x–2x) and voice, and a loop. The voice list follows the book's language: an English book gets English voices, a Chinese book gets Chinese ones |
 | **Type** | type **in place**, in the paragraph itself — the current word is highlighted, mistakes are marked red, accuracy and speed sit above, and the speech follows what you type |
 | **Read aloud** | speech recognition is transcribed and aligned word by word with the original, marking what you skipped, misread or added; falls back to a recording you grade yourself |
+| **Chinese books** | they read. Chinese sentences end at `。！？`, every character is a word, the punctuation stays on the page instead of vanishing, and the voices and the recogniser follow the language of the book |
 | **Tap a word** | a word card with phonetics, part of speech, definition, examples — and how the word reads in *this* sentence, generated live |
 | **Vocabulary** | star a word to keep it: a drawer with a progress ring (known / learning / to learn), today's additions, search and filters |
 | **Spaced review** | a saved word enters the review queue immediately, scheduled 1 / 2 / 4 / 7 / 15 / 30 days out |
@@ -249,6 +250,16 @@ install.sh           installs the bundle into a profile
   and words frequencies, so `books.list` returns every book in full. That is
   fine for a handful of books and gets slow with a large library; writing the
   reading position travels as a progress patch and is not affected.
+* **Chinese is counted one character per word.** Without a Chinese word
+  segmenter the vocabulary list and the word frequencies work in single
+  characters, not in words. The percentage of a Chinese book is therefore
+  smaller than it used to be — a book of 2,305 characters is 2,305 words, not
+  514. The reading record itself is untouched.
+* **`…` always ends a sentence.** In an English book "Wait… what" is cut in
+  two. The book in the demo has four such ellipses; a book full of them would
+  need the rule tightened.
+* **One local Chinese voice.** macOS ships one Mandarin voice (Ting-Ting); the
+  other 64 Chinese voices come from the MiniMax channel, which needs a key.
 
 ## License
 

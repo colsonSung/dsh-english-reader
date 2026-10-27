@@ -62,6 +62,18 @@ export function PlayIcon(props) {
   });
 }
 
+/** Three dots: more. */
+export function MoreIcon(props) {
+  return glyph({
+    ...props,
+    children: [
+      h('circle', { key: 'a', cx: '3.4', cy: '8', r: '1.5', fill: 'currentColor', stroke: 'none' }),
+      h('circle', { key: 'b', cx: '8', cy: '8', r: '1.5', fill: 'currentColor', stroke: 'none' }),
+      h('circle', { key: 'c', cx: '12.6', cy: '8', r: '1.5', fill: 'currentColor', stroke: 'none' }),
+    ],
+  });
+}
+
 /** Two bars: pause. */
 export function PauseIcon(props) {
   return glyph({

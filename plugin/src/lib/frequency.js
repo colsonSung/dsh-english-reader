@@ -1,13 +1,14 @@
 /**
- * Word frequency inside one book.
+ * 一本书内部的词频。
  *
- * The reader already knows how to split text into words, so the same
- * tokenizer is reused here: a book's chapters are tokenized, the words are
- * counted, and the most frequent ones are returned.
+ * 阅读器已经知道怎么切词，所以这里复用同一个切词器：把一本书的章节切成词，
+ * 统计词频，返回最高的那一批。
+ *
+ * 中文按「一字一词」统计：没有中文分词器时，单字就是诚实的单位。
  */
 import { tokenize } from './engine/segment.js';
 
-/** Words that carry no meaning for a learner and would only pad the list. */
+/** 对学习者没有意义、只会占位子的词。 */
 const STOP_WORDS = new Set([
   'the', 'a', 'an', 'and', 'or', 'but', 'if', 'of', 'at', 'by', 'for', 'with',
   'to', 'from', 'in', 'on', 'is', 'are', 'was', 'were', 'be', 'been', 'being',
@@ -20,11 +21,12 @@ const STOP_WORDS = new Set([
 ]);
 
 /**
- * The most frequent words of a book.
- * @param {{ title: string, paragraphs: string[] }[]} chapters
- * @param {number} [limit] - how many words to return
- * @param {{ stopWords?: boolean }} [options] - drop the function words
- * @returns {{ word: string, count: number, share: number }[]} most frequent first
+ * 一本书里出现最多的词。
+ *
+ * @param {{ title: string, paragraphs: string[] }[]} chapters - 书的章节。
+ * @param {number} [limit] - 最多返回多少个词。
+ * @param {{ stopWords?: boolean }} [options] - 是否去掉功能词。
+ * @returns {{ word: string, count: number, share: number }[]} 按词频从高到低。
  */
 export function wordFrequency(chapters, limit = 40, options = {}) {
   const counts = new Map();
@@ -48,9 +50,13 @@ export function wordFrequency(chapters, limit = 40, options = {}) {
 }
 
 /**
- * The size of a book in words.
- * @param {{ title: string, paragraphs: string[] }[]} chapters
- * @returns {number}
+ * 一本书有多大（按词算）。
+ *
+ * 英文按空格分开的词算，中文按汉字算——中文没有词间空格，逐字计数
+ * 是唯一诚实的口径。
+ *
+ * @param {{ title: string, paragraphs: string[] }[]} chapters - 书的章节。
+ * @returns {number} 全书的词数。
  */
 export function bookWordCount(chapters) {
   let total = 0;

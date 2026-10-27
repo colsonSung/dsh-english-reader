@@ -11,9 +11,12 @@
  *     选中云端音色时走这里，失败自动回落到本机合成
  *   - options.getCloudVoices: () => {id, name, lang}[]，云端音色列表
  *   - options.cloudPrefix: string，云端音色的 id 前缀（默认 'mm:'）
+ *   - options.lang: 'zh' | 'en'，朗读语言（默认 'en'）；中文书必须传 'zh'，
+ *     否则会拿英文音色读中文，听不懂
  */
 
 import { tokenize } from './segment.js';
+import { speechLang, voiceMatchesLanguage } from '../language.js';
 
 /**
  * A silent clip. Playing it inside the click that started the reading unlocks
@@ -72,7 +75,8 @@ function wordIndexAtChar(words, charIndex) {
  * 语音合成控制器。依赖浏览器 Web Speech API，但所有依赖都可注入，便于测试。
  *
  * @param {{ synth?: SpeechSynthesis, getVoices?: () => SpeechSynthesisVoice[],
- *           utteranceFactory?: (text: string) => any, estimateMsPerWord?: number }} [options]
+ *           utteranceFactory?: (text: string) => any, estimateMsPerWord?: number,
+ *           lang?: 'zh'|'en' }} [options]
  * @returns {TtsController}
  */
 export function createTts(options) {
@@ -90,6 +94,7 @@ export function createTts(options) {
   let voice = null; // 原始 SpeechSynthesisVoice
   let voiceInfo = null; // { id, name, lang }
   let cloudVoiceId = null; // 选中的云端音色（不含前缀）
+  let language = opts.lang === 'zh' ? 'zh' : 'en'; // 朗读语言：中文书必须用 'zh'
   let rate = 1;
   let generation = 0; // 会话令牌：cancel 后旧回调自动失效
   let session = null; // 当前朗读会话
@@ -111,14 +116,22 @@ export function createTts(options) {
   }
 
   /**
-   * 返回可用的英文语音，按 name 排序。
+   * 本机与云端的全部语音，按 name 排序。
    *
-   * @returns {{ id: string, name: string, lang: string }[]}
+   * 这里不按语言过滤：语言过滤是 listVoices 的事，全集要留着，
+   * 否则回落到全集时就没有东西可回落了。
+   *
+   * @returns {{ id: string, name: string, lang: string, cloud?: boolean }[]}
    */
-  function listVoices() {
+  function allVoices() {
     const local = rawVoices()
-      .filter((v) => v && typeof v.lang === 'string' && v.lang.toLowerCase().startsWith('en'))
-      .map((v) => ({ id: v.voiceURI || v.name || '', name: v.name || '', lang: v.lang }))
+      .filter((v) => v !== null && v !== undefined)
+      .map((v) => ({
+        id: v.voiceURI || v.name || '',
+        name: v.name || '',
+        lang: typeof v.lang === 'string' ? v.lang : '',
+      }))
+      .filter((v) => v.id !== '' || v.name !== '')
       .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
     const cloud = getCloudVoices === null
       ? []
@@ -134,11 +147,47 @@ export function createTts(options) {
         .map((v) => ({
           id: cloudPrefix + v.id,
           name: String(v.name ?? v.id),
-          lang: typeof v.lang === 'string' ? v.lang : 'en-US',
+          lang: typeof v.lang === 'string' && v.lang !== '' ? v.lang : 'en-US',
           cloud: true,
         }))
         .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
     return [...local, ...cloud];
+  }
+
+  /**
+   * 返回当前语言的语音，按 name 排序。
+   *
+   * 没有匹配到时退回全集：少一个中文音色不能让学习者看到一个空的音色列表。
+   *
+   * @returns {{ id: string, name: string, lang: string, cloud?: boolean }[]}
+   */
+  function listVoices() {
+    const all = allVoices();
+    const matched = all.filter((v) => voiceMatchesLanguage(v, language));
+    return matched.length > 0 ? matched : all;
+  }
+
+  /**
+   * 切换朗读语言。
+   *
+   * 当前选中的音色不会说新语言时，改用第一个会说新语言的音色；一个也没有时
+   * 保留当前音色，朗读器仍然出声，只是音色不对。
+   *
+   * @param {'zh'|'en'} next 语言
+   * @returns {'zh'|'en'} 生效的语言
+   */
+  function setLanguage(next) {
+    language = next === 'zh' ? 'zh' : next === 'en' ? 'en' : language;
+    if (voiceInfo !== null && !voiceMatchesLanguage(voiceInfo, language)) {
+      const candidate = allVoices().find((v) => voiceMatchesLanguage(v, language));
+      if (candidate !== undefined) setVoice(candidate.id);
+    }
+    return language;
+  }
+
+  /** @returns {'zh'|'en'} 当前朗读语言 */
+  function getLanguage() {
+    return language;
   }
 
   /**
@@ -158,11 +207,14 @@ export function createTts(options) {
     if (typeof id === 'string' && id.startsWith(cloudPrefix)) {
       cloudVoiceId = id.slice(cloudPrefix.length);
       voice = null;
-      voiceInfo = { id, name: id, lang: 'en-US', cloud: true };
+      // 音色表里有它就照抄名字与语言：中文云端音色不能被写成英文
+      const known = allVoices().find((v) => v.id === id);
+      voiceInfo = known ? { ...known } : { id, name: id, lang: 'en-US', cloud: true };
       return id;
     }
     cloudVoiceId = null;
-    const list = listVoices();
+    // 在全集里找：音色列表按语言过滤过，但选中的音色可能来自回落到的那一份
+    const list = allVoices();
     const found = list.find((v) => v.id === id) || list.find((v) => v.name === id);
     if (!found) return voiceInfo ? voiceInfo.id : null;
     voiceInfo = found;
@@ -306,7 +358,16 @@ export function createTts(options) {
     }
     const utterance = createUtterance(content);
     utterance.rate = rate;
-    if (voice) utterance.voice = voice;
+    if (voice) {
+      utterance.voice = voice;
+    } else {
+      // 没选音色时告诉浏览器要读哪种语言：中文书否则会用默认的英文音色念中文
+      try {
+        utterance.lang = speechLang(language);
+      } catch {
+        // 有些实现不允许改这个字段，忽略
+      }
+    }
 
     const s = {
       gen: ++generation,
@@ -555,6 +616,8 @@ export function createTts(options) {
     listVoices,
     setVoice,
     getVoice,
+    setLanguage,
+    getLanguage,
     setRate,
     getRate,
     speak,

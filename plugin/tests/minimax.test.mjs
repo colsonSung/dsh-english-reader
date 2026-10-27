@@ -108,7 +108,7 @@ test('tts 没有内容时不发请求', async () => {
   );
 });
 
-test('voices 只保留英文音色', async () => {
+test('voices 给出中英文音色并带上语言', async () => {
   const doFetch = fakeFetch({
     system_voice: [
       { voice_id: 'English_Graceful_Lady', voice_name: 'Graceful Lady' },
@@ -117,7 +117,11 @@ test('voices 只保留英文音色', async () => {
     ],
   });
   const list = await voices({ key: 'k', fetch: doFetch });
-  assert.deepEqual(list, [{ id: 'English_Graceful_Lady', name: 'Graceful Lady' }]);
+  assert.deepEqual(list, [
+    { id: 'English_Graceful_Lady', name: 'Graceful Lady', lang: 'en-US' },
+    { id: 'female-shaonv', name: '少女音色', lang: 'zh-CN' },
+    { id: 'male-qn-jingying', name: '精英青年音色', lang: 'zh-CN' },
+  ]);
 });
 
 test('asr 把录音交给模型并拿回转写文本', async () => {

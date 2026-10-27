@@ -42,7 +42,7 @@ wordsPerMinute(chars, ms) → number    // 5 字符 ≈ 1 词
 ### tts.js
 
 ```js
-createTts({ synth?, getVoices?, utteranceFactory?, estimateMsPerWord? }) → TtsController
+createTts({ synth?, getVoices?, utteranceFactory?, estimateMsPerWord?, lang? }) → TtsController
 ```
 
 - `speak(text, { onWord(index, charIndex), onEnd(), onError(err) })`：先 `cancel()` 再排队。
@@ -52,6 +52,9 @@ createTts({ synth?, getVoices?, utteranceFactory?, estimateMsPerWord? }) → Tts
 - 无 `speechSynthesis` 时所有方法不抛异常：`listVoices()` 返回 `[]`，`speak()` 走 `onError(new Error('当前环境不支持语音合成'))`。
 - `setRate` clamp 到 [0.5, 2]；`getVoice()` 返回 `{ id, name, lang }`。
 - 每次 `speak()` 分配新的会话令牌，`cancel()` 后旧 utterance 的 `onend/onboundary` 不再影响状态。
+- `lang` 是朗读语言（`'zh' | 'en'`，默认 `'en'`）：中文书必须传 `'zh'`，否则会拿英文音色念中文。
+  `listVoices()` 只给该语言的音色，一个也匹配不到时退回全集；`setLanguage(lang)` 换语言，
+  当前音色不会说新语言时换成第一个会说的，没有这样的音色就保留当前音色。
 
 ### sync.js
 

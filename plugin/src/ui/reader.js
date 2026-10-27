@@ -23,6 +23,7 @@ import { createTts } from '../lib/engine/tts.js';
 import { createSyncDriver } from '../lib/engine/sync.js';
 import { createRecognizer, createRecorder, isRecognitionSupported } from '../lib/engine/asr.js';
 import { diffTyping, diffWords, wordsPerMinute } from '../lib/engine/match.js';
+import { detectBookLanguage, speechLang } from '../lib/language.js';
 import { addEntry, listEntries, removeEntry } from '../lib/vocab.js';
 import { recordReading } from '../lib/activity.js';
 import { askAi } from '../lib/ai.js';
@@ -197,6 +198,22 @@ function normalizeWordId(word) {
   return word.toLowerCase().replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '');
 }
 
+/** A Chinese character: the reader treats one character as one word. */
+const CJK_CHARACTER = /\p{Script=Han}/u;
+
+/**
+ * Whether a word is a Chinese character.
+ *
+ * Chinese is written without spaces, so the reader must not put the space
+ * between words that English needs — and the chip padding that spaces out an
+ * English word would leave a gap between every character.
+ * @param {{ text?: string }} word
+ * @returns {boolean}
+ */
+function isCjkWord(word) {
+  return CJK_CHARACTER.test(String(word?.text ?? ''));
+}
+
 /**
  * Index vocabulary entries by their id.
  * @param {object[]} entries
@@ -338,10 +355,28 @@ function buildPractice(entries, replacements = []) {
         end: offset + text.length,
         displayIndex: entry.displayOffset + wordIndex,
       });
-      offset += text.length + 1;
+      // 中文没有词间空格：练习文本不能变成「你 好 。」
+      offset += text.length + (isCjkWord(word) ? 0 : 1);
     });
   });
-  return { text: words.map((word) => word.text).join(' '), words };
+  return { text: joinWords(words), words };
+}
+
+/**
+ * Join the practice words into the text the learner reads and types.
+ *
+ * English words are separated by a space; Chinese characters are not, so the
+ * text reads the way the book does.
+ * @param {{ text: string }[]} words
+ * @returns {string}
+ */
+function joinWords(words) {
+  let out = '';
+  for (let i = 0; i < words.length; i += 1) {
+    if (i > 0 && !isCjkWord(words[i - 1])) out += ' ';
+    out += words[i].text;
+  }
+  return out;
 }
 
 /**
@@ -427,6 +462,9 @@ export function ReaderView({
 
   const cloudVoicesRef = useRef([]);
   const ttsRef = useRef(null);
+  // The language of the book: an English voice cannot read a Chinese book
+  // aloud, and an English recogniser cannot hear one.
+  const language = useMemo(() => detectBookLanguage(book?.chapters), [book]);
   if (ttsRef.current === null) {
     ttsRef.current = createTts({
       // 云端音色走宿主的 MiniMax 语音合成；失败时引擎自动回落到本机合成
@@ -438,6 +476,7 @@ export function ReaderView({
         }),
       },
       getCloudVoices: () => cloudVoicesRef.current,
+      lang: language,
     });
   }
   const tts = ttsRef.current;
@@ -518,12 +557,17 @@ export function ReaderView({
       try {
         const status = await askAi('status');
         if (cancelled || status?.minimax !== true) return;
-        const list = await askAi('voices');
+        const list = await askAi('voices', { language });
         if (cancelled || !Array.isArray(list) || list.length === 0) return;
         cloudVoicesRef.current = list;
         setCloudReady(true);
         setVoices(tts.listVoices());
-        const first = `mm:${list[0].id}`;
+        // 音色表现在中英文混在一起：挑一个会读这本书的语种的，不能盲取第一个。
+        const want = language === 'zh' ? 'zh' : 'en';
+        const chosen = list.find((voice) => String(voice?.lang ?? '').toLowerCase().startsWith(want))
+          ?? list.find((voice) => String(voice?.lang ?? '') === '');
+        if (chosen === undefined) return;
+        const first = `mm:${chosen.id}`;
         tts.setVoice(first);
         setVoiceId(first);
       } catch {
@@ -532,7 +576,13 @@ export function ReaderView({
     };
     void load();
     return () => { cancelled = true; };
-  }, [tts]);
+  }, [tts, language]);
+
+  // 换了书（换了语种）以后，语音也跟着换：英文音色读不了中文。
+  useEffect(() => {
+    tts.setLanguage(language);
+    setVoices(tts.listVoices());
+  }, [language, tts]);
 
   // How many notes does this book have, and which paragraphs already carry
   // one? The list is the source of truth for both.
@@ -737,9 +787,10 @@ export function ReaderView({
       let offset = 0;
       for (const item of clozeWords) {
         words.push({ text: item.text, start: offset, end: offset + item.text.length, displayIndex: item.displayIndex });
-        offset += item.text.length + 1;
+        // 中文没有词间空格：挖空的练习文本不能变成「你 好 。」
+        offset += item.text.length + (isCjkWord(item) ? 0 : 1);
       }
-      return { text: words.map((word) => word.text).join(' '), words };
+      return { text: joinWords(words), words };
     }
     const source = scope === 'paragraph'
       ? paragraph.entries
@@ -1047,10 +1098,15 @@ export function ReaderView({
       && typeof g.navigator?.mediaDevices?.getUserMedia === 'function';
   }, []);
 
-  // The English voices the show can use.
+  // The voices the show can use: the ones that speak the book's language.
   const englishVoices = useMemo(
-    () => voices.filter((voice) => String(voice.lang ?? '').toLowerCase().startsWith('en')),
-    [voices],
+    () => {
+      const want = language === 'zh' ? 'zh' : 'en';
+      const matching = voices.filter((voice) => String(voice.lang ?? '').toLowerCase().startsWith(want));
+      // 一本书的语种如果没有音色，就把全集交出去：不能给一个空的音色选择器。
+      return matching.length > 0 ? matching : voices;
+    },
+    [voices, language],
   );
 
   // Give the show its two voices as soon as the voice list is there: the host
@@ -1530,7 +1586,8 @@ export function ReaderView({
     setSpokenResult(null);
     setSpeaking(true);
     const recognizer = createRecognizer({
-      lang: 'en-US',
+      // 识别要听得懂这本书的语种：英文识别器听不懂中文。
+      lang: speechLang(language),
       onPartial: (text) => { setInterim(text); },
       onFinal: (text) => {
         transcriptRef.current = `${transcriptRef.current} ${text}`.trim();
@@ -1551,7 +1608,7 @@ export function ReaderView({
     });
     recognizerRef.current = recognizer;
     recognizer.start();
-  }, [unit, scope, paragraph, t]);
+  }, [unit, scope, paragraph, t, language]);
 
   const stopRecognizing = useCallback(() => {
     recognizerRef.current?.stop?.();
@@ -2417,13 +2474,15 @@ export function ReaderView({
                 'span',
                 {
                   key: `${key}-${bucket.position}-${position}`,
-                  className: `er-word${stateClass(word)}${wordBlurClass(paragraphIndex, bucket.position)}`,
+                  className: `er-word${isCjkWord(word) ? ' is-cjk' : ''}${stateClass(word)}${wordBlurClass(paragraphIndex, bucket.position)}`,
                   title: t('reader.clickToLookup'),
                   onClick: (event) => { event.stopPropagation(); openWordCard(word, event); },
                 },
                 bionicText(word.text),
               ),
-              ' ',
+              // Chinese is written without spaces: a space between every
+              // character would read like a list of syllables.
+              isCjkWord(word) ? '' : ' ',
             ]),
           ))),
           renderParagraphTranslation(paragraphIndex),
@@ -2459,7 +2518,7 @@ export function ReaderView({
         const entry = vocabEntries[normalizeWordId(word.text)];
         const hard = entry !== undefined;
         const blank = clozeIndexes.has(position);
-        const className = `er-word${wordClass(position)}${stateClass(word)}`;
+        const className = `er-word${isCjkWord(word) ? ' is-cjk' : ''}${wordClass(position)}${stateClass(word)}`;
         const content = blank
           ? h('span', { className: 'er-cloze-blank' }, '____')
           : (mode === 'type'
@@ -2488,7 +2547,8 @@ export function ReaderView({
           gloss === null
             ? wordNode
             : h('span', { key: `wrap-${position}`, className: 'er-hard-wrap' }, wordNode, gloss),
-          ' ',
+          // Chinese is written without spaces.
+          isCjkWord(word) ? '' : ' ',
         ];
       }),
     ));

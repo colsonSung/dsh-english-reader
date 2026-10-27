@@ -57,6 +57,9 @@ export const STYLE = `
 .er-counter{font-size:12px;color:var(--dsw-alias-label-tertiary)}
 .er-paragraph{font-family:Georgia,'Songti SC','Times New Roman',serif;font-size:18px;line-height:1.95;color:var(--dsw-alias-label-primary);padding:20px 22px;border-radius:var(--dsw-radius-lg,12px);background:var(--dsw-alias-bg-layer-1);border:1px solid var(--dsw-alias-border-l1);word-break:break-word}
 .er-word{display:inline-block;padding:1px 3px;border-radius:var(--dsw-radius-sm,6px);cursor:pointer;transition:background-color .12s ease,color .12s ease}
+/* A Chinese character is a word of its own: the padding that spaces out an
+   English word would leave a gap between every character. */
+.er-word.is-cjk{padding:1px 0}
 .er-word:hover{background:var(--dsw-alias-interactive-bg-hover)}
 .er-word.is-spoken{background:var(--dsw-alias-bg-layer-3)}
 .er-word.is-current{color:var(--dsw-alias-state-business-primary)}
@@ -215,7 +218,7 @@ export const STYLE = `
 .er-view-switch-item:hover{background:var(--dsw-alias-interactive-bg-hover)}
 .er-view-switch-item[aria-pressed="true"]:hover{background:var(--dsw-alias-bg-layer-1)}
 .er-view-switch-item[aria-pressed="true"]{background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary)}
-.er-book-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:18px}
+.er-book-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:20px 16px}
 .er-book-card{display:flex;flex-direction:column;gap:6px}
 .er-book-cover-button{appearance:none;border:0;background:transparent;padding:0;cursor:pointer;border-radius:var(--dsw-radius-md,8px);overflow:hidden;display:block;width:100%}
 .er-cover{position:relative;width:100%;aspect-ratio:2/3;border-radius:var(--dsw-radius-md,8px);overflow:hidden;background:var(--dsw-alias-bg-layer-2);border:1px solid var(--dsw-alias-border-l1);box-shadow:0 1px 3px rgba(0,0,0,.12)}
@@ -256,14 +259,30 @@ export const STYLE = `
 .er-library-card-number.is-played{color:var(--dsw-alias-state-business-primary)}
 .er-library-card-number.is-speed{color:var(--dsw-alias-state-success-primary)}
 .er-library-card-unit{font-size:12px;color:var(--dsw-alias-label-secondary)}
-.er-book-grid{grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:20px 16px}
+.er-book-grid{grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:20px 16px}
 .er-shelf-card{position:relative;display:flex;flex-direction:column;gap:4px}
 .er-shelf-cover-button{appearance:none;border:0;background:transparent;padding:0;cursor:pointer;display:block;width:100%}
 .er-shelf-cover{position:relative;width:100%;aspect-ratio:2/3;transition:transform .16s ease,box-shadow .16s ease;border-radius:var(--dsw-radius-md,8px);overflow:hidden;background:var(--dsw-alias-bg-layer-2);border:1px solid var(--dsw-alias-border-l1);box-shadow:0 1px 3px rgba(0,0,0,.14)}
-.er-cover-action{position:absolute;bottom:6px;display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;border:0;background:rgba(0,0,0,.45);color:#fff;font-size:12px;line-height:1;cursor:pointer;opacity:0;transition:opacity .15s ease}
-.er-shelf-cover:hover .er-cover-action,.er-book:hover .er-cover-action{opacity:1}
-.er-cover-listen{left:6px}
-.er-cover-menu{right:6px}
+/* The two round buttons are the whole point of a cover: a learner starts the
+   book from them, so they are drawn on the cover at all times instead of
+   waiting for a hover. Both are discs of the panel's own surface colour, with
+   the label colour for the glyph, so they follow the light and the dark
+   theme; the drop shadow is what lifts them off a pale cover. The native
+   button chrome is switched off, or the browser rounds the box instead of
+   drawing a circle, and the corner shape is pinned to a plain circle, because
+   the shell draws every box with a soft superellipse and a disc must be a
+   disc. */
+.er-cover-action{position:absolute;bottom:8px;display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;appearance:none;-webkit-appearance:none;padding:0;border:0;border-radius:50%;corner-shape:round;background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.30),0 0 0 1px var(--dsw-alias-border-l2);transition:transform .15s ease,box-shadow .15s ease}
+.er-cover-action:hover{transform:scale(1.07);box-shadow:0 4px 12px rgba(0,0,0,.36),0 0 0 1px var(--dsw-alias-border-l2)}
+.er-cover-action:active{transform:scale(.94)}
+.er-cover-action:focus-visible{outline:2px solid var(--dsw-alias-state-business-primary);outline-offset:2px}
+/* The play button is the bigger of the two: it carries the triangle of the
+   reader's transport control. The glyph is a share of the disc, so the
+   button shrinks with the cover instead of with a font size. */
+.er-cover-listen{left:8px;width:34px;height:34px}
+.er-cover-listen svg{width:70%;height:70%;position:relative;left:-1px}
+.er-cover-menu{right:8px;width:22px;height:22px}
+.er-cover-menu svg{width:62%;height:62%}
 .er-shelf-card:hover .er-shelf-cover{transform:translateY(-2px);box-shadow:0 6px 16px rgba(0,0,0,.14)}
 .er-shelf-title{font-size:12.5px;color:var(--dsw-alias-label-primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .er-shelf-percent{font-size:11px;color:var(--dsw-alias-label-tertiary)}
@@ -304,13 +323,15 @@ export const STYLE = `
 .er-wordlist.is-page .er-wordlist-list{max-width:640px}
 
 
+/* The whole tile opens the book, so the overlay sits under the two round
+   buttons: a click on the play button must not fall through to it. */
 .er-cover-open{position:absolute;inset:0;border:0;background:transparent;cursor:pointer;z-index:0}
-.er-cover-action{z-index:1}
+.er-cover-action{z-index:2}
 .er-shelf-cover .er-cover-image{z-index:0}
 /* The list view shows a small cover: the two round buttons must not overlap
    each other on a thumbnail that is only 46 pixels wide. */
 .er-book-cover-small{width:46px;flex:none;position:relative}
-.er-book-cover-small .er-cover-action{width:17px;height:17px;font-size:9px;bottom:3px}
+.er-book-cover-small .er-cover-action{width:17px;height:17px;bottom:3px;box-shadow:0 1px 4px rgba(0,0,0,.32),0 0 0 1px var(--dsw-alias-border-l2)}
 .er-book-cover-small .er-cover-listen{left:3px}
 .er-book-cover-small .er-cover-menu{right:3px}
 .er-book-cover-small .er-cover-progress{height:3px}

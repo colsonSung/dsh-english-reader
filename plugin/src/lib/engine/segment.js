@@ -46,14 +46,28 @@ const DOTTED_INITIALS = /^(?:[a-z]\.)+[a-z]$/;
 /** 序数词：1st / 2nd / 3rd / 4th。 */
 const ORDINAL = /^\d+(?:st|nd|rd|th)$/i;
 
-/** 词核心：字母或数字，允许词内撇号与连字符（如 don't、well-known）。 */
-const WORD_CORE = /[A-Za-z0-9]+(?:['’\-][A-Za-z0-9]+)*/g;
+/**
+ * 词核心：字母或数字，允许词内撇号与连字符（如 don't、well-known）。
+ *
+ * 汉字按「一字一词」处理：中文没有词间空格，没有中文分词器时逐字成词
+ * 是最诚实的单位（见频率统计口径）。
+ *
+ * u 标志让 \p{Script=Han} 按码点匹配：生僻字（𠮷 这样的 UTF-16 代理对）
+ * 不会被劈成两半，偏移始终落在码点边界上。
+ */
+const WORD_CORE = /[A-Za-z0-9]+(?:['’\-][A-Za-z0-9]+)*|\p{Script=Han}/gu;
+
+/** 句子里有没有汉字：只有中文句子需要处理悬空标点。 */
+const HAN = /\p{Script=Han}/u;
 
 /** 可以并入词尾的标点（不含双引号，避免把下一段的引号吞进来）。 */
-const TRAILING_PUNCTUATION = /[.,;:!?%…)\]}’']/;
+const TRAILING_PUNCTUATION = /[.,;:!?%…)\]}’'，。、；：！？》」』）〕】]/;
 
 /** 可以并入句尾的闭合符号。 */
-const CLOSING_MARKS = '"\'”’)]}»›';
+const CLOSING_MARKS = '"\'”’)]}»›」』）》】〕';
+
+/** 中文句末标点（全角）：。！？ */
+const CJK_TERMINATORS = '。！？';
 
 const DIGIT = /[0-9]/;
 const LETTER = /[A-Za-z]/;
@@ -157,6 +171,8 @@ function absorbClosing(text, from) {
 /**
  * 计算以 text[terminatorIndex] 处的标点结尾的句子边界。
  *
+ * 英文标点（. ! ?）后面必须跟空白才算断句；中文标点自带句界，不要求空白。
+ *
  * @param {string} text
  * @param {number} terminatorIndex
  * @returns {number} 句子结束下标（不含）；不是句尾时返回 -1
@@ -181,19 +197,33 @@ function findSentenceEnd(text, terminatorIndex) {
     if (isAbbreviation(text, terminatorIndex)) return -1;
     if (isDigit(text[terminatorIndex - 1]) && isDigit(text[j])) return -1; // 3.14
     if (isListMarker(text, terminatorIndex)) return -1; // 1. 第一条
+  } else if (ch === '…') {
+    // 中文省略号：连续的 …（通常是 ……）算一个句尾
+    while (j < n && text[j] === '…') j += 1;
+  } else if (CJK_TERMINATORS.includes(ch)) {
+    // 中文全角句末标点：连续的 ！！／？！ 算一个句尾
+    while (j < n && (text[j] === '！' || text[j] === '？')) j += 1;
   } else {
     // 连续的 ! 或 ?（"Really?!"）
     while (j < n && (text[j] === '!' || text[j] === '?')) j += 1;
   }
 
   const end = absorbClosing(text, j);
-  const after = text[end];
-  if (after === undefined || isSpace(after)) return end;
-  return -1;
+  if (ch === '.' || ch === '!' || ch === '?') {
+    // 英文规则：句末标点后面必须跟空白（或文本结束）才断句
+    const after = text[end];
+    if (after === undefined || isSpace(after)) return end;
+    return -1;
+  }
+  // 中文句末标点与省略号自带句界，后面不需要空白
+  return end;
 }
 
 /**
  * 切句。需处理句末标点 . ! ? 以及闭引号；需避免在常见缩写（Mr. Dr. e.g. i.e. etc. U.S.）后误切。
+ *
+ * 中文用全角的 。！？ 与省略号 … 断句；中文不用空格，所以句末标点后面
+ * 直接跟下一句也算断句。
  *
  * @param {string} text
  * @returns {string[]} 每个元素是一个句子（含原标点），空白已 trim
@@ -205,7 +235,10 @@ export function splitSentences(text) {
   let i = 0;
   while (i < text.length) {
     const ch = text[i];
-    if (ch === '.' || ch === '!' || ch === '?') {
+    if (
+      ch === '.' || ch === '!' || ch === '?' || ch === '…'
+      || CJK_TERMINATORS.includes(ch)
+    ) {
       const end = findSentenceEnd(text, i);
       if (end > i) {
         const piece = text.slice(start, end).trim();
@@ -240,6 +273,14 @@ function cleanWord(text) {
  * 切词：保留原文片段与规范化形式。
  *
  * 偏移保证 `sentence.slice(word.start, word.end) === word.text`。
+ * 汉字按码点成词（一个字一个词），代理对里的生僻字不会被劈成两半。
+ *
+ * 中文句子里的标点未必紧挨着词：「，」「—」「（《」这类符号落在上一个词的
+ * 后面、下一个词的前面，切词时会被两边同时跳过。阅读区只渲染词，这些字符
+ * 就会凭空消失（实测 2.4% 的字符）。所以中文句子里的悬空标点必须挂到某个
+ * 词上：句首的前置标点并入第一个词，其余并入前一个词。
+ *
+ * 英文句子的标点规则是另一套（标点必须紧邻才算词的尾部），这里不动它。
  *
  * @param {string} sentence
  * @returns {Word[]}
@@ -247,16 +288,53 @@ function cleanWord(text) {
 export function tokenize(sentence) {
   if (typeof sentence !== 'string' || sentence.length === 0) return [];
   const words = [];
-  const re = new RegExp(WORD_CORE.source, 'g');
+  const re = new RegExp(WORD_CORE.source, 'gu');
+  const chinese = HAN.test(sentence);
   let match = re.exec(sentence);
   while (match !== null) {
+    let start = match.index;
     let end = match.index + match[0].length;
-    // 把紧跟的尾部标点并入这个词（"don't," → "don't,"）
+    // 把紧跟的尾部标点并入这个词（"don't," → "don't,"；中文的「好。」同理）
     while (end < sentence.length && TRAILING_PUNCTUATION.test(sentence[end])) end += 1;
-    const text = sentence.slice(match.index, end);
-    words.push({ text, clean: cleanWord(text), start: match.index, end });
+
+    if (chinese) {
+      const gapStart = words.length > 0 ? words[words.length - 1].end : 0;
+      if (start > gapStart) {
+        // 悬空标点的首尾（忽略两端的空白）。
+        let from = gapStart;
+        let to = start;
+        while (from < to && isSpace(sentence[from])) from += 1;
+        while (to > from && isSpace(sentence[to - 1])) to -= 1;
+        if (to > from) {
+          const previous = words[words.length - 1];
+          if (previous === undefined) {
+            // 句首的前置标点（（《「）只能并入第一个词。
+            start = from;
+          } else {
+            previous.end = to;
+            previous.text = sentence.slice(previous.start, previous.end);
+            previous.clean = cleanWord(previous.text);
+          }
+        }
+      }
+    }
+
+    const text = sentence.slice(start, end);
+    words.push({ text, clean: cleanWord(text), start, end });
     if (end > re.lastIndex) re.lastIndex = end;
     match = re.exec(sentence);
+  }
+
+  // 句尾剩下的标点（"。」））跟谁都不挨着：它们归最后一个词。
+  if (chinese && words.length > 0) {
+    const last = words[words.length - 1];
+    let to = sentence.length;
+    while (to > last.end && isSpace(sentence[to - 1])) to -= 1;
+    if (to > last.end) {
+      last.end = to;
+      last.text = sentence.slice(last.start, last.end);
+      last.clean = cleanWord(last.text);
+    }
   }
   return words;
 }

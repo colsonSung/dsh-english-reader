@@ -377,23 +377,117 @@ export async function asr({ audio, mimeType = 'audio/webm' }, deps = {}) {
   }
 }
 
+/** 汉字。 */
+const HAN = /\p{Script=Han}/u;
+
+/** 纯 ASCII 的 id 与名字。 */
+const ASCII_ONLY = /^[\x20-\x7e]*$/;
+
+/**
+ * MiniMax 把语言写在音色 id 的开头，客户端靠它判断音色说的是哪种语言。
+ *
+ * 取自真实的 system_voice 列表：中文音色是 `Chinese (Mandarin)_…` 与
+ * `Cantonese_…`，英文是 `English_…`；没有前缀的中文音色（少女音色、聪明男童 …）
+ * 只能从名字里的汉字认出来。
+ */
+const VOICE_LANGUAGE_PREFIXES = [
+  ['chinese (mandarin)', 'zh-CN'],
+  ['cantonese', 'zh-HK'],
+  ['english', 'en-US'],
+  ['japanese', 'ja-JP'],
+  ['korean', 'ko-KR'],
+  ['portuguese', 'pt-BR'],
+  ['spanish', 'es-ES'],
+  ['french', 'fr-FR'],
+  ['italian', 'it-IT'],
+  ['german', 'de-DE'],
+  ['russian', 'ru-RU'],
+  ['indonesian', 'id-ID'],
+  ['dutch', 'nl-NL'],
+  ['arabic', 'ar-SA'],
+  ['turkish', 'tr-TR'],
+  ['ukrainian', 'uk-UA'],
+  ['vietnamese', 'vi-VN'],
+];
+
+/**
+ * 判断一个云端音色的 id 里有没有写着语言的前缀。
+ *
+ * @param {string} id - the voice id.
+ * @returns {boolean} true when the id names its language.
+ */
+function hasLanguagePrefix(id) {
+  const value = String(id ?? '').trim().toLowerCase();
+  return VOICE_LANGUAGE_PREFIXES.some(([prefix]) => value.startsWith(prefix));
+}
+
+/**
+ * 判断一个云端音色说的是哪种语言。
+ *
+ * MiniMax 的 system_voice 不带语言字段，只能从 id 前缀判断；没有前缀的中文
+ * 音色由名字里的汉字认出；介绍里写明口音的（美式、英式）算英文；剩下既没有
+ * 语言前缀、名字也不是中文的，是英文角色音色（Santa Claus、Grinch …）。
+ *
+ * @param {{voice_id?: string, voice_name?: string, description?: string[]}} voice
+ * @returns {string} the BCP 47 tag; an empty string when it stays unknown.
+ */
+export function detectVoiceLanguage(voice) {
+  const id = String(voice?.voice_id ?? '').trim().toLowerCase();
+  const name = String(voice?.voice_name ?? '');
+  const description = Array.isArray(voice?.description)
+    ? voice.description.join(' ')
+    : String(voice?.description ?? '');
+  for (const [prefix, lang] of VOICE_LANGUAGE_PREFIXES) {
+    if (id.startsWith(prefix)) return lang;
+  }
+  if (HAN.test(name)) return 'zh-CN';
+  if (/英语|英文|美式|英式/.test(description)) return 'en-US';
+  if (id !== '' && ASCII_ONLY.test(id) && ASCII_ONLY.test(name)) return 'en-US';
+  return '';
+}
+
 /**
  * List the system voices of the MiniMax account.
  *
+ * 中英文音色都给出：中文书要用中文音色，英文书要用英文音色，客户端按
+ * 返回的 lang 自己筛。认不出语言的音色也留下，免得无声消失。
+ *
  * @param {object} [deps] - the injected dependencies.
- * @returns {Promise<{id: string, name: string}[]>} the English voices.
+ * @param {'zh'|'en'} [deps.language] - the language the client reads in; the
+ *   voices of that language come first, so a client that takes the first voice
+ *   of the list gets a voice that speaks the book.
+ * @returns {Promise<{id: string, name: string, lang: string}[]>} the voices.
  */
 export async function voices(deps = {}) {
   const payload = await request('/get_voice', { voice_type: 'all' }, deps);
   const list = Array.isArray(payload?.system_voice) ? payload.system_voice : [];
-  return list
+  const wanted = deps.language === 'zh' ? 'zh' : 'en';
+  const decorated = list
     .filter((voice) => voice && typeof voice.voice_id === 'string')
-    .filter((voice) => {
-      const id = voice.voice_id.toLowerCase();
-      const name = String(voice.voice_name ?? '');
-      return id.startsWith('english') || /英文|英语/i.test(name);
-    })
-    .map((voice) => ({ id: voice.voice_id, name: String(voice.voice_name ?? voice.voice_id) }));
+    .map((voice, index) => ({
+      index,
+      explicit: hasLanguagePrefix(voice.voice_id),
+      voice: {
+        id: voice.voice_id,
+        name: String(voice.voice_name ?? voice.voice_id),
+        lang: detectVoiceLanguage(voice),
+      },
+    }))
+    // 只给中英文音色；认不出语言的音色也留着，它不是别的语言
+    .filter((entry) => {
+      const lang = entry.voice.lang;
+      return lang === '' || lang.startsWith('zh') || lang.startsWith('en');
+    });
+  // 客户端习惯取列表里的第一个音色：先排本书的语言，再排 id 里写明语言的
+  // 音色（旁白型的），角色音色（少女音色、Santa Claus …）排在后面
+  decorated.sort((a, b) => {
+    const group =
+      Number(b.voice.lang.startsWith(wanted)) - Number(a.voice.lang.startsWith(wanted));
+    if (group !== 0) return group;
+    if (a.explicit !== b.explicit) return a.explicit ? -1 : 1;
+    return a.index - b.index;
+  });
+  return decorated.map((entry) => entry.voice);
 }
 
 /**

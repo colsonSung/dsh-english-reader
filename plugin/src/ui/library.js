@@ -2,11 +2,13 @@
  * The library tab.
  *
  * The shelf looks like a bookshelf: a centred title, three figures for the
- * learner's own reading, and a grid of covers. Every cover carries a listen
+ * learner's own reading, and a grid of covers. Every cover carries a play
  * button, a progress bar and a menu (word frequency, details, rename, delete).
+ * The two round buttons are always on the cover: they are what a learner does
+ * with a book, so they must not wait for a hover.
  */
 import { createElement as h, useCallback, useEffect, useMemo, useState } from 'react';
-import { ImportIcon, TrashIcon, BookIcon } from './icons.js';
+import { ImportIcon, TrashIcon, BookIcon, PlayIcon, MoreIcon } from './icons.js';
 import { bookWordCount, wordFrequency } from '../lib/frequency.js';
 
 /**
@@ -258,9 +260,10 @@ export function LibraryView({
           type: 'button',
           className: 'er-cover-action er-cover-listen',
           title: t('library.listen'),
+          'aria-label': t('library.listen'),
           onClick: (event) => { event.stopPropagation(); onListen?.(book.id); },
         },
-        '🎧',
+        h(PlayIcon, { size: 24 }),
       ),
       h(
         'button',
@@ -268,9 +271,10 @@ export function LibraryView({
           type: 'button',
           className: 'er-cover-action er-cover-menu',
           title: t('library.more'),
+          'aria-label': t('library.more'),
           onClick: (event) => { openMenu(book, event); },
         },
-        '⋯',
+        h(MoreIcon, { size: 16 }),
       ),
       percent > 0
         ? h('div', { className: 'er-cover-progress' }, h('span', { style: { width: `${Math.round(percent * 100)}%` } }))

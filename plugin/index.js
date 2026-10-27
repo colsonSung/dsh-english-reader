@@ -199,7 +199,9 @@ export function apply(ctx) {
                 return Response.json({ ok: true, result: cover });
               }
               if (method === 'voices') {
-                const voices = await minimax.voices();
+                // 客户端告诉宿主这本书的语种，音色表按它排序：中文书的第一个
+                // 音色必须会读中文，而不是英文。
+                const voices = await minimax.voices({ language: payload?.language });
                 return Response.json({ ok: true, result: voices });
               }
               if (method === 'shelf') {

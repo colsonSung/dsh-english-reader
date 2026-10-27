@@ -14,7 +14,21 @@ import, the parsing, the matching UI and the speech recognition.
 > 共用同一批书，文件不出本机。完整的中文技术文档见
 > [`plugin/README.md`](plugin/README.md)。
 
-![the reader](docs/reader.png)
+## Demo
+
+The recording below is the real plugin, running in the Harness web UI against a
+real shelf: the library, a book open in the reader, the word card answering
+for a tapped word, and the vocabulary list.
+
+![the English Reader, from the library to the word card](docs/demo.gif)
+
+> The GIF is 40 seconds. The same walk-through is available as
+> [`demo.mp4`](docs/demo.mp4) (1384×900, 775 KB).
+>
+> The recording and the screenshots below are taken from the running
+> application, not from the preview harness, so they show the plugin as it
+> behaves. The application's own sidebar is collapsed to its icon rail: it
+> lists the reader's own sessions, which are nobody else's business.
 
 ## What you get
 
@@ -34,7 +48,17 @@ import, the parsing, the matching UI and the speech recognition.
 
 ## The library
 
+The shelf: covers, the three read statistics, search, and the per-book menu.
+
 ![library](docs/library.png)
+
+## The reader
+
+One book, opened. The paragraph is the practice surface: the current
+sentence is highlighted, the rest is context, and the word you collected
+earlier keeps its colour.
+
+![reader](docs/reader.png)
 
 ## The vocabulary list
 
@@ -201,7 +225,7 @@ plugin/              the DeepSeek Harness bundle
   src/ui/            the shelf, the reader, the word card, the vocabulary
   tests/             257 tests over the parsers, the engine, the shelf and the UI
   tools/preview/     a standalone harness that renders the reader
-docs/                screenshots
+docs/                the screenshots and the demo recording
 install.sh           installs the bundle into a profile
 ```
 

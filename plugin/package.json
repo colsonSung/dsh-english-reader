@@ -1,6 +1,6 @@
 {
   "name": "dsh-reader",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "private": true,
   "type": "module",
   "description": "An English reading practice panel for the DeepSeek Harness: import EPUB, TXT, Markdown, HTML or PDF, then read it sentence by sentence — listen, type along with the synced speech, or read aloud and check the transcript.",

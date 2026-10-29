@@ -1,0 +1,415 @@
+- generic [ref=f3e4]:
+  - generic [ref=f3e7]:
+    - generic [ref=f3e8]:
+      - button "New session" [ref=f3e9] [cursor=pointer]
+      - button "Collapse sidebar" [ref=f3e38] [cursor=pointer]
+    - button "New session" [ref=f3e41] [cursor=pointer]:
+      - generic [ref=f3e42]: New Session
+      - generic [aria-hidden]:
+        - generic:
+          - generic: ⌥
+          - generic: ⌘
+          - generic: "N"
+    - navigation "Global panels" [ref=f3e47]:
+      - button "Plugins" [ref=f3e48] [cursor=pointer]
+      - button "Automation tasks" [ref=f3e57] [cursor=pointer]
+      - button "English Reader" [ref=f3e190] [cursor=pointer]
+      - button "Open source" [ref=f3e71] [cursor=pointer]
+      - button "Onerway PMO" [ref=f3e79] [cursor=pointer]
+      - button "More" [ref=f3e86] [cursor=pointer]
+    - generic [ref=f3e96]:
+      - generic [ref=f3e97]:
+        - generic [ref=f3e98]: Workspaces
+        - generic [ref=f3e100]:
+          - button "Search sessions" [ref=f3e101] [cursor=pointer]
+          - textbox "Search session names"
+        - generic [ref=f3e105]:
+          - button "View options" [ref=f3e107] [cursor=pointer]
+          - button "Add workspace" [ref=f3e111] [cursor=pointer]
+      - tree "Sessions" [ref=f3e116]:
+        - treeitem "onerway-business-systems" [ref=f3e119] [cursor=pointer]
+        - generic [ref=f3e125]:
+          - treeitem "Default workspace" [expanded] [ref=f3e127] [cursor=pointer]
+          - treeitem "Running 移动端会话记录点击无响应 4min" [ref=f3e198] [cursor=pointer]:
+            - generic [ref=f3e199]: Running
+            - generic [ref=f3e205]: 移动端会话记录点击无响应
+            - generic [ref=f3e206]: 4min
+          - treeitem "PMO 插件的version report抽屉页看 8min" [ref=f3e208] [cursor=pointer]:
+            - generic [ref=f3e210]: PMO 插件的version report抽屉页看
+            - generic [ref=f3e211]: 8min
+          - treeitem "Running 调整行距与段距 24min" [ref=f3e213] [cursor=pointer]:
+            - generic [ref=f3e214]: Running
+            - generic [ref=f3e220]: 调整行距与段距
+            - generic [ref=f3e221]: 24min
+          - treeitem "这些参考文件每次任务完成时 29min" [ref=f3e223] [cursor=pointer]:
+            - generic [ref=f3e225]: 这些参考文件每次任务完成时
+            - generic [ref=f3e226]: 29min
+    - button "Account menu" [ref=f3e142] [cursor=pointer]:
+      - generic [ref=f3e227]: 宋博
+  - generic [ref=f3e228]:
+    - generic [ref=f3e229]:
+      - generic [ref=f3e230]:
+        - button "＋" [ref=f3e231] [cursor=pointer]
+        - button "🌐" [ref=f3e232] [cursor=pointer]
+      - tablist [ref=f3e233]:
+        - tab "Library" [ref=f3e234] [cursor=pointer]
+        - tab "Reader" [selected] [ref=f3e235] [cursor=pointer]
+        - tab "Vocabulary" [ref=f3e236] [cursor=pointer]
+      - button "⋯" [ref=f3e238] [cursor=pointer]
+    - generic [ref=f3e240]:
+      - generic [ref=f3e241]:
+        - button "Back to the library" [ref=f3e242]
+        - button "Notes" [ref=f3e245]
+        - combobox [ref=f3e249] [cursor=pointer]:
+          - option "sample" [selected]
+        - generic [ref=f3e250]: Paragraph 1/6 · Sentence 1/1
+        - generic "sample" [ref=f3e251]
+        - button "Words" [ref=f3e252] [cursor=pointer]
+        - button "Mind map" [ref=f3e253]
+        - button "Audio podcast" [ref=f3e260]
+        - generic [ref=f3e265]:
+          - generic [ref=f3e266]: 6 words
+          - generic [ref=f3e267]: 0 to learn
+          - generic [ref=f3e268]: est. 1 min
+          - generic [ref=f3e269]: Known 100%
+      - generic [ref=f3e270]:
+        - generic [ref=f3e271]:
+          - generic [ref=f3e272]:
+            - button "Listen" [pressed] [ref=f3e273] [cursor=pointer]
+            - button "Type" [ref=f3e278] [cursor=pointer]
+            - button "Read aloud" [ref=f3e282] [cursor=pointer]
+            - generic [ref=f3e286]: Practice unit
+            - group "Practice unit" [ref=f3e287]:
+              - button "Sentence" [pressed] [ref=f3e288] [cursor=pointer]
+              - button "Paragraph" [ref=f3e289] [cursor=pointer]
+              - button "Cloze" [disabled] [ref=f3e290] [cursor=pointer]
+              - button "Full text translation" [ref=f3e291] [cursor=pointer]
+          - generic [ref=f3e296]:
+            - generic [ref=f3e297]: Click any word to hear it on its own.· ← → to turn the page
+            - generic [ref=f3e298]:
+              - paragraph [ref=f3e301]:
+                - generic [ref=f3e302]:
+                  - generic "Click to look the word up" [ref=f3e303] [cursor=pointer]: Companies
+                  - generic "Click to look the word up" [ref=f3e304] [cursor=pointer]: are
+                  - generic "Click to look the word up" [ref=f3e305] [cursor=pointer]: born
+                  - generic "Click to look the word up" [ref=f3e306] [cursor=pointer]: out
+                  - generic "Click to look the word up" [ref=f3e307] [cursor=pointer]: of
+                  - generic "Click to look the word up" [ref=f3e308] [cursor=pointer]: dreams.
+              - generic [ref=f3e309]:
+                - button "Add a note to this paragraph" [ref=f3e310] [cursor=pointer]
+                - button "Translate this paragraph" [ref=f3e314] [cursor=pointer]
+                - button "Read this paragraph aloud" [ref=f3e319] [cursor=pointer]
+            - generic [ref=f3e322]:
+              - paragraph [ref=f3e325]:
+                - generic [ref=f3e326]:
+                  - generic "Click to look the word up" [ref=f3e327] [cursor=pointer]: Think
+                  - generic "Click to look the word up" [ref=f3e328] [cursor=pointer]: about
+                  - generic "Click to look the word up" [ref=f3e329] [cursor=pointer]: it.
+                - generic [ref=f3e330]:
+                  - generic "Click to look the word up" [ref=f3e331] [cursor=pointer]: Someone
+                  - generic "Click to look the word up" [ref=f3e332] [cursor=pointer]: had
+                  - generic "Click to look the word up" [ref=f3e333] [cursor=pointer]: an
+                  - generic "Click to look the word up" [ref=f3e334] [cursor=pointer]: amazing
+                  - generic "Click to look the word up" [ref=f3e335] [cursor=pointer]: idea.
+                - generic [ref=f3e336]:
+                  - generic "Click to look the word up" [ref=f3e337] [cursor=pointer]: They
+                  - generic "Click to look the word up" [ref=f3e338] [cursor=pointer]: dreamed
+                  - generic "Click to look the word up" [ref=f3e339] [cursor=pointer]: about
+                  - generic "Click to look the word up" [ref=f3e340] [cursor=pointer]: making
+                  - generic "Click to look the word up" [ref=f3e341] [cursor=pointer]: something
+                  - generic "Click to look the word up" [ref=f3e342] [cursor=pointer]: better,
+                  - generic "Click to look the word up" [ref=f3e343] [cursor=pointer]: newer,
+                  - generic "Click to look the word up" [ref=f3e344] [cursor=pointer]: easier,
+                  - generic "Click to look the word up" [ref=f3e345] [cursor=pointer]: more
+                  - generic "Click to look the word up" [ref=f3e346] [cursor=pointer]: convenient.
+                - generic [ref=f3e347]:
+                  - generic "Click to look the word up" [ref=f3e348] [cursor=pointer]: They
+                  - generic "Click to look the word up" [ref=f3e349] [cursor=pointer]: dreamed
+                  - generic "Click to look the word up" [ref=f3e350] [cursor=pointer]: about
+                  - generic "Click to look the word up" [ref=f3e351] [cursor=pointer]: doing
+                  - generic "Click to look the word up" [ref=f3e352] [cursor=pointer]: something
+                  - generic "Click to look the word up" [ref=f3e353] [cursor=pointer]: that
+                  - generic "Click to look the word up" [ref=f3e354] [cursor=pointer]: had
+                  - generic "Click to look the word up" [ref=f3e355] [cursor=pointer]: never
+                  - generic "Click to look the word up" [ref=f3e356] [cursor=pointer]: been
+                  - generic "Click to look the word up" [ref=f3e357] [cursor=pointer]: done
+                  - generic "Click to look the word up" [ref=f3e358] [cursor=pointer]: before,
+                  - generic "Click to look the word up" [ref=f3e359] [cursor=pointer]: and
+                  - generic "Click to look the word up" [ref=f3e360] [cursor=pointer]: they
+                  - generic "Click to look the word up" [ref=f3e361] [cursor=pointer]: formed
+                  - generic "Click to look the word up" [ref=f3e362] [cursor=pointer]: a
+                  - generic "Click to look the word up" [ref=f3e363] [cursor=pointer]: company
+                  - generic "Click to look the word up" [ref=f3e364] [cursor=pointer]: to
+                  - generic "Click to look the word up" [ref=f3e365] [cursor=pointer]: make
+                  - generic "Click to look the word up" [ref=f3e366] [cursor=pointer]: that
+                  - generic "Click to look the word up" [ref=f3e367] [cursor=pointer]: dream
+                  - generic "Click to look the word up" [ref=f3e368] [cursor=pointer]: a
+                  - generic "Click to look the word up" [ref=f3e369] [cursor=pointer]: reality.
+                - generic [ref=f3e370]:
+                  - generic "Click to look the word up" [ref=f3e371] [cursor=pointer]: The
+                  - generic "Click to look the word up" [ref=f3e372] [cursor=pointer]: people
+                  - generic "Click to look the word up" [ref=f3e373] [cursor=pointer]: they
+                  - generic "Click to look the word up" [ref=f3e374] [cursor=pointer]: hire
+                  - generic "Click to look the word up" [ref=f3e375] [cursor=pointer]: along
+                  - generic "Click to look the word up" [ref=f3e376] [cursor=pointer]: the
+                  - generic "Click to look the word up" [ref=f3e377] [cursor=pointer]: way
+                  - generic "Click to look the word up" [ref=f3e378] [cursor=pointer]: buy
+                  - generic "Click to look the word up" [ref=f3e379] [cursor=pointer]: into
+                  - generic "Click to look the word up" [ref=f3e380] [cursor=pointer]: the
+                  - generic "Click to look the word up" [ref=f3e381] [cursor=pointer]: dream
+                  - generic "Click to look the word up" [ref=f3e382] [cursor=pointer]: and
+                  - generic "Click to look the word up" [ref=f3e383] [cursor=pointer]: want
+                  - generic "Click to look the word up" [ref=f3e384] [cursor=pointer]: to
+                  - generic "Click to look the word up" [ref=f3e385] [cursor=pointer]: help
+                  - generic "Click to look the word up" [ref=f3e386] [cursor=pointer]: achieve
+                  - generic "Click to look the word up" [ref=f3e387] [cursor=pointer]: it.
+                - generic [ref=f3e388]:
+                  - generic "Click to look the word up" [ref=f3e389] [cursor=pointer]: Indeed,
+                  - generic "Click to look the word up" [ref=f3e390] [cursor=pointer]: the
+                  - generic "Click to look the word up" [ref=f3e391] [cursor=pointer]: thought
+                  - generic "Click to look the word up" [ref=f3e392] [cursor=pointer]: of
+                  - generic "Click to look the word up" [ref=f3e393] [cursor=pointer]: realizing
+                  - generic "Click to look the word up" [ref=f3e394] [cursor=pointer]: that
+                  - generic "Click to look the word up" [ref=f3e395] [cursor=pointer]: compelling
+                  - generic "Click to look the word up" [ref=f3e396] [cursor=pointer]: vision
+                  - generic "Click to look the word up" [ref=f3e397] [cursor=pointer]: energizes
+                  - generic "Click to look the word up" [ref=f3e398] [cursor=pointer]: them
+                  - generic "Click to look the word up" [ref=f3e399] [cursor=pointer]: when
+                  - generic "Click to look the word up" [ref=f3e400] [cursor=pointer]: they
+                  - generic "Click to look the word up" [ref=f3e401] [cursor=pointer]: come
+                  - generic "Click to look the word up" [ref=f3e402] [cursor=pointer]: to
+                  - generic "Click to look the word up" [ref=f3e403] [cursor=pointer]: work
+                  - generic "Click to look the word up" [ref=f3e404] [cursor=pointer]: every
+                  - generic "Click to look the word up" [ref=f3e405] [cursor=pointer]: day.
+              - generic [ref=f3e406]:
+                - button "Add a note to this paragraph" [ref=f3e407] [cursor=pointer]
+                - button "Translate this paragraph" [ref=f3e411] [cursor=pointer]
+                - button "Read this paragraph aloud" [ref=f3e416] [cursor=pointer]
+            - generic [ref=f3e419]:
+              - paragraph [ref=f3e422]:
+                - generic [ref=f3e423]:
+                  - generic "Click to look the word up" [ref=f3e424] [cursor=pointer]: But
+                  - generic "Click to look the word up" [ref=f3e425] [cursor=pointer]: doing
+                  - generic "Click to look the word up" [ref=f3e426] [cursor=pointer]: business
+                  - generic "Click to look the word up" [ref=f3e427] [cursor=pointer]: is
+                  - generic "Click to look the word up" [ref=f3e428] [cursor=pointer]: messy
+                  - generic "Click to look the word up" [ref=f3e429] [cursor=pointer]: and
+                  - generic "Click to look the word up" [ref=f3e430] [cursor=pointer]: unpredictable.
+              - generic [ref=f3e431]:
+                - button "Add a note to this paragraph" [ref=f3e432] [cursor=pointer]
+                - button "Translate this paragraph" [ref=f3e436] [cursor=pointer]
+                - button "Read this paragraph aloud" [ref=f3e441] [cursor=pointer]
+            - generic [ref=f3e444]:
+              - paragraph [ref=f3e447]:
+                - generic [ref=f3e448]:
+                  - generic "Click to look the word up" [ref=f3e449] [cursor=pointer]: Companies
+                  - generic "Click to look the word up" [ref=f3e450] [cursor=pointer]: face
+                  - generic "Click to look the word up" [ref=f3e451] [cursor=pointer]: challenges
+                  - generic "Click to look the word up" [ref=f3e452] [cursor=pointer]: competition,
+                  - generic "Click to look the word up" [ref=f3e453] [cursor=pointer]: changing
+                  - generic "Click to look the word up" [ref=f3e454] [cursor=pointer]: markets,
+                  - generic "Click to look the word up" [ref=f3e455] [cursor=pointer]: limited
+                  - generic "Click to look the word up" [ref=f3e456] [cursor=pointer]: resources,
+                  - generic "Click to look the word up" [ref=f3e457] [cursor=pointer]: and
+                  - generic "Click to look the word up" [ref=f3e458] [cursor=pointer]: more
+                  - generic "Click to look the word up" [ref=f3e459] [cursor=pointer]: that
+                  - generic "Click to look the word up" [ref=f3e460] [cursor=pointer]: cause
+                  - generic "Click to look the word up" [ref=f3e461] [cursor=pointer]: them
+                  - generic "Click to look the word up" [ref=f3e462] [cursor=pointer]: to
+                  - generic "Click to look the word up" [ref=f3e463] [cursor=pointer]: underachieve
+                  - generic "Click to look the word up" [ref=f3e464] [cursor=pointer]: those
+                  - generic "Click to look the word up" [ref=f3e465] [cursor=pointer]: dreams.
+                - generic [ref=f3e466]:
+                  - generic "Click to look the word up" [ref=f3e467] [cursor=pointer]: There's
+                  - generic "Click to look the word up" [ref=f3e468] [cursor=pointer]: a
+                  - generic "Click to look the word up" [ref=f3e469] [cursor=pointer]: relentless,
+                  - generic "Click to look the word up" [ref=f3e470] [cursor=pointer]: ongoing
+                  - generic "Click to look the word up" [ref=f3e471] [cursor=pointer]: pressure
+                  - generic "Click to look the word up" [ref=f3e472] [cursor=pointer]: to
+                  - generic "Click to look the word up" [ref=f3e473] [cursor=pointer]: grow
+                  - generic "Click to look the word up" [ref=f3e474] [cursor=pointer]: the
+                  - generic "Click to look the word up" [ref=f3e475] [cursor=pointer]: company,
+                  - generic "Click to look the word up" [ref=f3e476] [cursor=pointer]: with
+                  - generic "Click to look the word up" [ref=f3e477] [cursor=pointer]: employees
+                  - generic "Click to look the word up" [ref=f3e478] [cursor=pointer]: to
+                  - generic "Click to look the word up" [ref=f3e479] [cursor=pointer]: pay,
+                  - generic "Click to look the word up" [ref=f3e480] [cursor=pointer]: customers
+                  - generic "Click to look the word up" [ref=f3e481] [cursor=pointer]: to
+                  - generic "Click to look the word up" [ref=f3e482] [cursor=pointer]: serve,
+                  - generic "Click to look the word up" [ref=f3e483] [cursor=pointer]: and
+                  - generic "Click to look the word up" [ref=f3e484] [cursor=pointer]: countless
+                  - generic "Click to look the word up" [ref=f3e485] [cursor=pointer]: other
+                  - generic "Click to look the word up" [ref=f3e486] [cursor=pointer]: funding
+                  - generic "Click to look the word up" [ref=f3e487] [cursor=pointer]: needs.
+              - generic [ref=f3e488]:
+                - button "Add a note to this paragraph" [ref=f3e489] [cursor=pointer]
+                - button "Translate this paragraph" [ref=f3e493] [cursor=pointer]
+                - button "Read this paragraph aloud" [ref=f3e498] [cursor=pointer]
+            - generic [ref=f3e501]:
+              - paragraph [ref=f3e504]:
+                - generic [ref=f3e505]:
+                  - generic "Click to look the word up" [ref=f3e506] [cursor=pointer]: To
+                  - generic "Click to look the word up" [ref=f3e507] [cursor=pointer]: keep
+                  - generic "Click to look the word up" [ref=f3e508] [cursor=pointer]: it
+                  - generic "Click to look the word up" [ref=f3e509] [cursor=pointer]: all
+                  - generic "Click to look the word up" [ref=f3e510] [cursor=pointer]: going,
+                  - generic "Click to look the word up" [ref=f3e511] [cursor=pointer]: you
+                  - generic "Click to look the word up" [ref=f3e512] [cursor=pointer]: have
+                  - generic "Click to look the word up" [ref=f3e513] [cursor=pointer]: to
+                  - generic "Click to look the word up" [ref=f3e514] [cursor=pointer]: keep
+                  - generic "Click to look the word up" [ref=f3e515] [cursor=pointer]: growing.
+              - generic [ref=f3e516]:
+                - button "Add a note to this paragraph" [ref=f3e517] [cursor=pointer]
+                - button "Translate this paragraph" [ref=f3e521] [cursor=pointer]
+                - button "Read this paragraph aloud" [ref=f3e526] [cursor=pointer]
+            - generic [ref=f3e529]:
+              - paragraph [ref=f3e532]:
+                - generic [ref=f3e533]:
+                  - generic "Click to look the word up" [ref=f3e534] [cursor=pointer]: But
+                  - generic "Click to look the word up" [ref=f3e535] [cursor=pointer]: this
+                  - generic "Click to look the word up" [ref=f3e536] [cursor=pointer]: stress
+                  - generic "Click to look the word up" [ref=f3e537] [cursor=pointer]: leads
+                  - generic "Click to look the word up" [ref=f3e538] [cursor=pointer]: to
+                  - generic "Click to look the word up" [ref=f3e539] [cursor=pointer]: messy
+                  - generic "Click to look the word up" [ref=f3e540] [cursor=pointer]: decision
+                  - generic "Click to look the word up" [ref=f3e541] [cursor=pointer]: making
+                  - generic "Click to look the word up" [ref=f3e542] [cursor=pointer]: and
+                  - generic "Click to look the word up" [ref=f3e543] [cursor=pointer]: competing
+                  - generic "Click to look the word up" [ref=f3e544] [cursor=pointer]: priorities.
+                - generic [ref=f3e545]:
+                  - generic "Click to look the word up" [ref=f3e546] [cursor=pointer]: It
+                  - generic "Click to look the word up" [ref=f3e547] [cursor=pointer]: becomes
+                  - generic "Click to look the word up" [ref=f3e548] [cursor=pointer]: harder
+                  - generic "Click to look the word up" [ref=f3e549] [cursor=pointer]: to
+                  - generic "Click to look the word up" [ref=f3e550] [cursor=pointer]: answer
+                  - generic "Click to look the word up" [ref=f3e551] [cursor=pointer]: the
+                  - generic "Click to look the word up" [ref=f3e552] [cursor=pointer]: question,
+                  - generic "Click to look the word up" [ref=f3e553] [cursor=pointer]: What
+                  - generic "Click to look the word up" [ref=f3e554] [cursor=pointer]: should
+                  - generic "Click to look the word up" [ref=f3e555] [cursor=pointer]: we
+                  - generic "Click to look the word up" [ref=f3e556] [cursor=pointer]: do
+                  - generic "Click to look the word up" [ref=f3e557] [cursor=pointer]: next?
+                - generic [ref=f3e558]:
+                  - generic "Click to look the word up" [ref=f3e559] [cursor=pointer]: How
+                  - generic "Click to look the word up" [ref=f3e560] [cursor=pointer]: do
+                  - generic "Click to look the word up" [ref=f3e561] [cursor=pointer]: you
+                  - generic "Click to look the word up" [ref=f3e562] [cursor=pointer]: keep
+                  - generic "Click to look the word up" [ref=f3e563] [cursor=pointer]: a
+                  - generic "Click to look the word up" [ref=f3e564] [cursor=pointer]: company
+                  - generic "Click to look the word up" [ref=f3e565] [cursor=pointer]: growing
+                  - generic "Click to look the word up" [ref=f3e566] [cursor=pointer]: when
+                  - generic "Click to look the word up" [ref=f3e567] [cursor=pointer]: you
+                  - generic "Click to look the word up" [ref=f3e568] [cursor=pointer]: don't
+                  - generic "Click to look the word up" [ref=f3e569] [cursor=pointer]: have
+                  - generic "Click to look the word up" [ref=f3e570] [cursor=pointer]: clear
+                  - generic "Click to look the word up" [ref=f3e571] [cursor=pointer]: alignment
+                  - generic "Click to look the word up" [ref=f3e572] [cursor=pointer]: and
+                  - generic "Click to look the word up" [ref=f3e573] [cursor=pointer]: don't
+                  - generic "Click to look the word up" [ref=f3e574] [cursor=pointer]: know
+                  - generic "Click to look the word up" [ref=f3e575] [cursor=pointer]: exactly
+                  - generic "Click to look the word up" [ref=f3e576] [cursor=pointer]: which
+                  - generic "Click to look the word up" [ref=f3e577] [cursor=pointer]: direction
+                  - generic "Click to look the word up" [ref=f3e578] [cursor=pointer]: to
+                  - generic "Click to look the word up" [ref=f3e579] [cursor=pointer]: take?
+                - generic [ref=f3e580]:
+                  - generic "Click to look the word up" [ref=f3e581] [cursor=pointer]: As
+                  - generic "Click to look the word up" [ref=f3e582] [cursor=pointer]: a
+                  - generic "Click to look the word up" [ref=f3e583] [cursor=pointer]: result,
+                  - generic "Click to look the word up" [ref=f3e584] [cursor=pointer]: the
+                  - generic "Click to look the word up" [ref=f3e585] [cursor=pointer]: people
+                  - generic "Click to look the word up" [ref=f3e586] [cursor=pointer]: who
+                  - generic "Click to look the word up" [ref=f3e587] [cursor=pointer]: originally
+                  - generic "Click to look the word up" [ref=f3e588] [cursor=pointer]: bought
+                  - generic "Click to look the word up" [ref=f3e589] [cursor=pointer]: into
+                  - generic "Click to look the word up" [ref=f3e590] [cursor=pointer]: it
+                  - generic "Click to look the word up" [ref=f3e591] [cursor=pointer]: begin
+                  - generic "Click to look the word up" [ref=f3e592] [cursor=pointer]: feeling
+                  - generic "Click to look the word up" [ref=f3e593] [cursor=pointer]: a
+                  - generic "Click to look the word up" [ref=f3e594] [cursor=pointer]: disconnect
+                  - generic "Click to look the word up" [ref=f3e595] [cursor=pointer]: between
+                  - generic "Click to look the word up" [ref=f3e596] [cursor=pointer]: what
+                  - generic "Click to look the word up" [ref=f3e597] [cursor=pointer]: they
+                  - generic "Click to look the word up" [ref=f3e598] [cursor=pointer]: believed
+                  - generic "Click to look the word up" [ref=f3e599] [cursor=pointer]: was
+                  - generic "Click to look the word up" [ref=f3e600] [cursor=pointer]: possible
+                  - generic "Click to look the word up" [ref=f3e601] [cursor=pointer]: and
+                  - generic "Click to look the word up" [ref=f3e602] [cursor=pointer]: what
+                  - generic "Click to look the word up" [ref=f3e603] [cursor=pointer]: they've
+                  - generic "Click to look the word up" [ref=f3e604] [cursor=pointer]: been
+                  - generic "Click to look the word up" [ref=f3e605] [cursor=pointer]: consigned
+                  - generic "Click to look the word up" [ref=f3e606] [cursor=pointer]: to.
+              - generic [ref=f3e607]:
+                - button "Add a note to this paragraph" [ref=f3e608] [cursor=pointer]
+                - button "Translate this paragraph" [ref=f3e612] [cursor=pointer]
+                - button "Read this paragraph aloud" [ref=f3e617] [cursor=pointer]
+        - generic [ref=f3e620]:
+          - button "Learning modes" [ref=f3e621]
+          - button "Cloze" [disabled] [ref=f3e626]
+          - button "Settings" [ref=f3e630]
+          - button "Contents" [ref=f3e638]
+      - generic [ref=f3e644]:
+        - generic [ref=f3e645]:
+          - button "Play" [ref=f3e646] [cursor=pointer]
+          - button "Previous sentence" [ref=f3e649] [cursor=pointer]
+          - button "Next sentence" [ref=f3e652] [cursor=pointer]
+          - button "Repeat" [ref=f3e655]
+        - generic [ref=f3e661]:
+          - generic [ref=f3e662]: Speed
+          - combobox [ref=f3e663] [cursor=pointer]:
+            - option "0.5x"
+            - option "0.75x"
+            - option "1x" [selected]
+            - option "1.25x"
+            - option "1.5x"
+            - option "2x"
+          - generic [ref=f3e664]: Voice
+          - combobox [ref=f3e665] [cursor=pointer]:
+            - option "Albert (en-US)"
+            - option "Bad News (en-US)"
+            - option "Bahh (en-US)"
+            - option "Bells (en-US)"
+            - option "Boing (en-US)"
+            - option "Bubbles (en-US)"
+            - option "Cellos (en-US)"
+            - option "Daniel (en-GB)"
+            - option "Eddy (English (United Kingdom)) (en-GB)"
+            - option "Eddy (English (United States)) (en-US)"
+            - option "Flo (English (United Kingdom)) (en-GB)"
+            - option "Flo (English (United States)) (en-US)"
+            - option "Fred (en-US)"
+            - option "Good News (en-US)"
+            - option "Grandma (English (United Kingdom)) (en-GB)"
+            - option "Grandma (English (United States)) (en-US)"
+            - option "Grandpa (English (United Kingdom)) (en-GB)"
+            - option "Grandpa (English (United States)) (en-US)"
+            - option "Jester (en-US)"
+            - option "Junior (en-US)"
+            - option "Karen (en-AU)"
+            - option "Kathy (en-US)"
+            - option "Moira (en-IE)"
+            - option "Organ (en-US)"
+            - option "Ralph (en-US)"
+            - option "Reed (English (United Kingdom)) (en-GB)"
+            - option "Reed (English (United States)) (en-US)"
+            - option "Rishi (en-IN)"
+            - option "Rocko (English (United Kingdom)) (en-GB)"
+            - option "Rocko (English (United States)) (en-US)"
+            - option "Samantha (en-US)"
+            - option "Sandy (English (United Kingdom)) (en-GB)"
+            - option "Sandy (English (United States)) (en-US)"
+            - option "Shelley (English (United Kingdom)) (en-GB)"
+            - option "Shelley (English (United States)) (en-US)"
+            - option "Superstar (en-US)"
+            - option "Tessa (en-ZA)"
+            - option "Trinoids (en-US)"
+            - option "Whisper (en-US)"
+            - option "Wobble (en-US)"
+            - option "Zarvox (en-US)"
+            - option "Aussie Bloke · MiniMax"
+            - option "Diligent Man · MiniMax"
+            - option "Gentle-voiced man · MiniMax"
+            - option "Graceful Lady · MiniMax"
+            - option "Trustworthy Man · MiniMax" [selected]
+            - option "Whispering girl · MiniMax"
+          - generic [ref=f3e666]: 1 / 6
+  - button "Change appearance" [ref=f3e185] [cursor=pointer]

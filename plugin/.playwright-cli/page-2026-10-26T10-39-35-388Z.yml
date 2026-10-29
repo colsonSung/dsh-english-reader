@@ -1,0 +1,50 @@
+- generic [ref=e4]:
+  - generic [ref=e7]:
+    - generic [ref=e8]:
+      - button "New session" [ref=e9] [cursor=pointer]
+      - button "Collapse sidebar" [ref=e38] [cursor=pointer]
+    - button "New session" [ref=e41] [cursor=pointer]:
+      - generic [ref=e42]: New Session
+      - generic [aria-hidden]:
+        - generic:
+          - generic: ⌥
+          - generic: ⌘
+          - generic: "N"
+    - navigation "Global panels" [ref=e47]:
+      - button "Plugins" [ref=e48] [cursor=pointer]
+      - button "Automation tasks" [ref=e57] [cursor=pointer]
+      - button "English Reader" [ref=e64] [cursor=pointer]
+      - button "Open source" [ref=e71] [cursor=pointer]
+      - button "Onerway PMO" [ref=e79] [cursor=pointer]
+      - button "More" [ref=e86] [cursor=pointer]
+    - generic [ref=e96]:
+      - generic [ref=e97]:
+        - generic [ref=e98]: Workspaces
+        - generic [ref=e100]:
+          - button "Search sessions" [ref=e101] [cursor=pointer]
+          - textbox "Search session names"
+        - generic [ref=e105]:
+          - button "View options" [ref=e107] [cursor=pointer]
+          - button "Add workspace" [ref=e111] [cursor=pointer]
+      - tree "Sessions" [ref=e116]:
+        - treeitem "onerway-business-systems" [ref=e119] [cursor=pointer]
+        - treeitem "Default workspace" [ref=e127] [cursor=pointer]
+    - button "Account menu" [ref=e140] [cursor=pointer]
+  - generic [ref=e148]:
+    - generic:
+      - banner
+    - generic [ref=e154]:
+      - generic [ref=e162]:
+        - generic [ref=e163]: Into the Unknown
+        - generic [ref=e164]: Preview
+      - button "Choose workspace" [ref=e166] [cursor=pointer]
+      - generic [ref=e174] [cursor=pointer]:
+        - generic [ref=e176]:
+          - textbox "Choose workspace" [ref=e177]
+          - generic [aria-hidden]: Choose a workspace to start
+        - generic [ref=e178]:
+          - generic [ref=e179]:
+            - button "Add files or run commands" [disabled]
+          - generic [ref=e180]:
+            - button "Send message" [disabled]
+  - button "Change appearance" [ref=e183] [cursor=pointer]

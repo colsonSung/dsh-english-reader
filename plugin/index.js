@@ -8,7 +8,7 @@
  * and the podcasts live on disk, so that the desktop app and any browser see
  * the same library.
  *
- * The client half posts every request to `/api/english-reader` and switches on
+ * The client half posts every request to `/api/reader` and switches on
  * the method:
  *   - `word` / `translate` / `breakdown`: the AI assist answers (MiniMax first,
  *     the Host's own model as the fallback)
@@ -33,7 +33,7 @@ import * as gutenberg from './src/host/gutenberg.js';
 import { createShelf } from './src/host/shelf.js';
 
 /** The route the client half posts its requests to. */
-export const ROUTE = '/api/english-reader';
+export const ROUTE = '/api/reader';
 
 /** The methods the client half may ask for. */
 const METHODS = new Set(['word', 'translate', 'breakdown', 'mindmap', 'podcast', 'podcastReply', 'tts', 'asr', 'cover', 'voices', 'status', 'source', 'shelf']);
@@ -58,15 +58,15 @@ function idOf(record) {
 }
 
 /**
- * Where the shelf lives: the current profile's `english-reader` folder. When the
- * profile directory is not known, the shelf falls back to `~/.dsh/english-reader`.
+ * Where the shelf lives: the current profile's `reader` folder. When the
+ * profile directory is not known, the shelf falls back to `~/.dsh/reader`.
  * @param {object} ctx - the Host plugin context.
  * @returns {{ dir?: string }} the options for createShelf.
  */
 function shelfOptions(ctx) {
   const profileContext = serviceOf(ctx, 'profileContext');
   const profileDir = typeof profileContext?.dir === 'string' ? profileContext.dir : '';
-  const dir = profileDir !== '' ? join(profileDir, 'english-reader') : undefined;
+  const dir = profileDir !== '' ? join(profileDir, 'reader') : undefined;
   return { dir };
 }
 
@@ -145,7 +145,7 @@ async function handleShelf(shelf, payload) {
     await shelf.deletePodcast(id);
     return Response.json({ ok: true, result: { id } });
   }
-  return Response.json(failure('english-reader/unknown-action', `不支持的书库操作：${action}`), { status: 400 });
+  return Response.json(failure('reader/unknown-action', `不支持的书库操作：${action}`), { status: 400 });
 }
 
 /**
@@ -168,11 +168,11 @@ export function apply(ctx) {
             try {
               body = await request.json();
             } catch {
-              return Response.json(failure('english-reader/bad-request', 'body is not JSON'), { status: 400 });
+              return Response.json(failure('reader/bad-request', 'body is not JSON'), { status: 400 });
             }
             const method = typeof body?.method === 'string' ? body.method : '';
             if (!METHODS.has(method)) {
-              return Response.json(failure('english-reader/unknown-method', `不支持的方法：${method}`), { status: 400 });
+              return Response.json(failure('reader/unknown-method', `不支持的方法：${method}`), { status: 400 });
             }
             const payload = body?.payload ?? {};
             try {
@@ -248,7 +248,7 @@ export function apply(ctx) {
             } catch (error) {
               return Response.json(
                 failure(
-                  'english-reader/failed',
+                  'reader/failed',
                   error instanceof Error ? error.message : String(error),
                 ),
                 { status: 200 },
@@ -258,9 +258,9 @@ export function apply(ctx) {
         });
       } catch (error) {
         // A reload can apply this plugin twice; the route already exists then.
-        console.warn('[english-reader] route registration failed: ' + String(error));
+        console.warn('[reader] route registration failed: ' + String(error));
         return () => {};
       }
-    }, 'english-reader: ' + ROUTE);
+    }, 'reader: ' + ROUTE);
   });
 }

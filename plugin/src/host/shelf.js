@@ -27,7 +27,7 @@ import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 
 /** 书库根目录的缺省值：与 MiniMax 的 key、Gutenberg 的目录同处。 */
-export const DEFAULT_DIR = join(homedir(), '.dsh', 'english-reader');
+export const DEFAULT_DIR = join(homedir(), '.dsh', 'reader');
 
 /** 一本书一个文件，放在这个子目录里；第一次写入时才创建。 */
 const BOOKS_DIR = 'books';
@@ -53,8 +53,8 @@ export function safeFileName(id) {
 }
 
 /**
- * 书库根目录：优先用调用方给的书库目录，其次用宿主配置目录下的 english-reader，
- * 最后退回 ~/.dsh/english-reader。
+ * 书库根目录：优先用调用方给的书库目录，其次用宿主配置目录下的 reader，
+ * 最后退回 ~/.dsh/reader。
  *
  * @param {{ dir?: string, profileDir?: string }} [options] - 调用方给的选项。
  * @returns {string} 根目录。
@@ -63,7 +63,7 @@ export function resolveDir(options = {}) {
   const dir = typeof options.dir === 'string' ? options.dir.trim() : '';
   if (dir !== '') return dir;
   const profileDir = typeof options.profileDir === 'string' ? options.profileDir.trim() : '';
-  if (profileDir !== '') return join(profileDir, 'english-reader');
+  if (profileDir !== '') return join(profileDir, 'reader');
   return DEFAULT_DIR;
 }
 
@@ -193,7 +193,7 @@ function removeTableEntry(file, id) {
  * 建一个书库。
  *
  * @param {{ dir?: string, profileDir?: string }} [options] - dir 是书库根目录；
- *   profileDir 是宿主的配置目录；两个都没有时用 ~/.dsh/english-reader。
+ *   profileDir 是宿主的配置目录；两个都没有时用 ~/.dsh/reader。
  * @returns {object} 书库仓库（方法全部异步）。
  */
 export function createShelf(options = {}) {

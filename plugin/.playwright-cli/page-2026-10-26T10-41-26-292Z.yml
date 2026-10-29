@@ -1,0 +1,55 @@
+- generic [ref=e4]:
+  - generic [ref=e7]:
+    - generic [ref=e8]:
+      - button "New session" [ref=e9] [cursor=pointer]
+      - button "Collapse sidebar" [ref=e38] [cursor=pointer]
+    - button "New session" [ref=e41] [cursor=pointer]:
+      - generic [ref=e42]: New Session
+      - generic [aria-hidden]:
+        - generic:
+          - generic: ⌥
+          - generic: ⌘
+          - generic: "N"
+    - navigation "Global panels" [ref=e47]:
+      - button "Plugins" [ref=e48] [cursor=pointer]
+      - button "Automation tasks" [ref=e57] [cursor=pointer]
+      - button "English Reader" [ref=e64] [cursor=pointer]
+      - button "Open source" [ref=e71] [cursor=pointer]
+      - button "Onerway PMO" [ref=e79] [cursor=pointer]
+      - button "More" [ref=e86] [cursor=pointer]
+    - generic [ref=e96]:
+      - generic [ref=e97]:
+        - generic [ref=e98]: Workspaces
+        - generic [ref=e100]:
+          - button "Search sessions" [ref=e101] [cursor=pointer]
+          - textbox "Search session names"
+        - generic [ref=e105]:
+          - button "View options" [ref=e107] [cursor=pointer]
+          - button "Add workspace" [ref=e111] [cursor=pointer]
+      - tree "Sessions" [ref=e116]:
+        - treeitem "onerway-business-systems" [ref=e119] [cursor=pointer]
+        - generic [ref=e125]:
+          - treeitem "Default workspace" [expanded] [ref=e127] [cursor=pointer]
+          - treeitem "New Session" [ref=e193] [cursor=pointer]
+          - treeitem "Running 调整行距与段距 12min" [ref=e267] [cursor=pointer]:
+            - generic [ref=e198]: Running
+            - generic [ref=e204]: 调整行距与段距
+            - generic [ref=e205]: 12min
+          - treeitem "这些参考文件每次任务完成时 17min" [ref=e268] [cursor=pointer]:
+            - generic [ref=e209]: 这些参考文件每次任务完成时
+            - generic [ref=e210]: 17min
+          - treeitem "Running PMO 插件的version report抽屉页看 18min" [ref=e269] [cursor=pointer]:
+            - generic [ref=e213]: Running
+            - generic [ref=e219]: PMO 插件的version report抽屉页看
+            - generic [ref=e220]: 18min
+    - button "Account menu" [ref=e140] [cursor=pointer]:
+      - generic [ref=e221]: 宋博
+  - generic [ref=e270]:
+    - generic [ref=e271]: The reader hit a problem and stopped.
+    - generic [ref=e272]: Your books and notes are safe; reloading usually fixes it.
+    - generic [ref=e273]: t is not defined
+    - generic [ref=e274]: at mn.render (http://127.0.0.1:64580/plugins/??@deepseek-ai/dsh-client-ui-plan/client.js,@deepseek-ai/dsh-client-ui-user-questions/client.js,@deepseek-ai/dsh-client-ui-trajectory/client.js,@local/markdown-mermaid-preview/client.js,@deepseek-ai/dsh-experimental-client-ui-agent-team/client.js,@deepseek-ai/dsh-experimental-inspector/client.js,@deepseek-ai/dsh-experimental-session-inspector/client.js,@deepseek-ai/dsh-client-ui-plugin-market/client.js,@local/dsh-vscode-extension-host/client.js,@local/extension-console/client.js,@local/genoffice-docs/client.js,@local/plugin-share/client.js,@local/sidebar-appearance/client.js,@local/english-reader/client.js,@local/agent-team-board/client.js,@deepseek-ai/dsh-experimental-client-ui-voice-input/client.js,@local/open-source-board/client.js,@deepseek-ai/dsh-api-remote-access/client.js,@deepseek-ai/dsh-session-log-export/client.js,@deepseek-ai/dsh-client-file-upload/client.js,@deepseek-ai/dsh-api-remotes/client.js,@deepseek-ai/dsh-client-ui-deliverables/client.js,@local/onerway-pmo/client.js,@local/remote-control/client.js,@deepseek-ai/dsh-typert-registry/client.js,@deepseek-ai/dsh-client-product-analytics/client.js,@deepseek-ai/dsh-client-connection/client.js,@deepseek-ai/dsh-api-workspace-controller/client.js,@deepseek-ai/dsh-api-session-controller/client.js,@local/dsh-memory/client.js,@deepseek-ai/dsh-client-ui-directory-picker-native/client.js&rev=8fad42b0db8f:22953:111)
+    - generic [ref=e275]:
+      - button "Reload" [ref=e276] [cursor=pointer]
+      - button "Reload" [ref=e277] [cursor=pointer]
+  - button "Change appearance" [ref=e183] [cursor=pointer]

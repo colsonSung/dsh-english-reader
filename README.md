@@ -1,11 +1,11 @@
-# English Reader for DeepSeek Harness
+# Reader for DeepSeek Harness
 
 Import an ebook, then read it sentence by sentence — **listen to it**, **type
 along with the speech**, or **read aloud and check the transcript**. Your
 books stay on your machine, in one library that the desktop app and every
 browser share.
 
-The plugin adds an **English Reader** panel to the left sidebar of the
+The plugin adds a **Reader** panel to the left sidebar of the
 DeepSeek Harness. Everything the learner uses runs in the page: the file
 import, the parsing, the matching UI and the speech recognition.
 
@@ -20,7 +20,7 @@ The recording below is the real plugin, running in the Harness web UI against a
 real shelf: the library, a book open in the reader, the word card answering
 for a tapped word, and the vocabulary list.
 
-![the English Reader, from the library to the word card](docs/demo.gif)
+![the Reader, from the library to the word card](docs/demo.gif)
 
 > The GIF is 40 seconds. The same walk-through is available as
 > [`demo.mp4`](docs/demo.mp4) (1384×900, 775 KB).
@@ -68,8 +68,8 @@ earlier keeps its colour.
 ## Install
 
 ```bash
-git clone https://github.com/colsonSung/dsh-english-reader.git
-cd dsh-english-reader
+git clone https://github.com/colsonSung/dsh-reader.git
+cd dsh-reader
 ./install.sh              # installs into the profile of the running Harness
 ```
 
@@ -87,11 +87,11 @@ dsh plugin --profile web add ./plugin
 ```yaml
 # <profile>/cordis.patch.yml
 - insert:
-    - id: english-reader
-      name: 'dsh-english-reader'
+    - id: reader
+      name: 'dsh-reader'
 ```
 
-After the restart, an **English Reader** icon appears in the left sidebar's
+After the restart, a **Reader** icon appears in the left sidebar's
 Global panels.
 
 ## Optional: the AI channel
@@ -105,9 +105,9 @@ from a private file outside the workspace:
 
 ```bash
 export MINIMAX_API_KEY=...                          # 1. the environment
-mkdir -p ~/.dsh/english-reader && echo -n '...' \
-  > ~/.dsh/english-reader/minimax.key && chmod 600 \
-  ~/.dsh/english-reader/minimax.key                # 2. a private file
+mkdir -p ~/.dsh/reader && echo -n '...' \
+  > ~/.dsh/reader/minimax.key && chmod 600 \
+  ~/.dsh/reader/minimax.key                  # 2. a private file
 ```
 
 The key never enters the bundle and never reaches the browser. With no key
@@ -118,7 +118,7 @@ cloud voices fall back to the browser's.
 
 The 🌐 button in the library opens Project Gutenberg. The catalog is fetched
 once by the Host (it is about 21 MB, so it does not belong in a bundle) and
-cached under `~/.dsh/english-reader/` for seven days.
+cached under `~/.dsh/reader/` for seven days.
 
 ## How it works
 
@@ -131,7 +131,7 @@ page.
 
 The **host half** owns the three things a page cannot do safely: it holds the
 API key, it talks to the provider, and it owns the library on disk. It
-registers one route, `/api/english-reader`, through the Connection service's
+registers one route, `/api/reader`, through the Connection service's
 Fetch registry, so the caller is authenticated with the same browser session
 the rest of the application uses:
 
@@ -151,7 +151,7 @@ the rest of the application uses:
 The shelf belongs to the Host and is written to disk under the profile:
 
 ```
-<profileDir>/english-reader/
+<profileDir>/reader/
 ├── books/<bookId>.json      one file per book, the whole record
 ├── vocabulary.json
 ├── notes.json
@@ -219,7 +219,7 @@ also means `client.js` is **not** byte-reproducible across builds.
 
 ```
 plugin/              the DeepSeek Harness bundle
-  index.js           the Host half: the /api/english-reader route
+  index.js           the Host half: the /api/reader route
   src/client-entry.js  the client half: panel icon, page, dictionaries
   src/host/          the Host services: the shelf on disk, AI, MiniMax, Gutenberg
   src/lib/           parsers, the reading engine, the shelf client and its fallback

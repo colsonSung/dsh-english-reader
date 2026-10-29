@@ -1,5 +1,5 @@
 window.__ModuleLoader__.load({
-	id: "dsh-english-reader",
+	id: "dsh-reader",
 	chunk: "client.pdf.js",
 	factory: (require) => {
 		var module = { exports: {} };

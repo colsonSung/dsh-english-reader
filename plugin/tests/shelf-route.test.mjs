@@ -98,7 +98,7 @@ test('the shelf route keeps books across requests', async () => {
     assert.equal(list.body.result[0].chapters[0].paragraphs[0], 'Hello there.');
 
     // The book landed on disk in the profile directory.
-    const booksDir = join(dir, 'english-reader', 'books');
+    const booksDir = join(dir, 'reader', 'books');
     assert.ok(existsSync(booksDir), 'the books directory was not created');
     assert.deepEqual(readdirSync(booksDir), ['bk_a.json']);
 
@@ -190,7 +190,7 @@ test('an unknown shelf action is refused with a 400', async () => {
     const answer = await post(route, { method: 'shelf', payload: { action: 'books.nope' } });
     assert.equal(answer.status, 400);
     assert.equal(answer.body.ok, false);
-    assert.equal(answer.body.error.code, 'english-reader/unknown-action');
+    assert.equal(answer.body.error.code, 'reader/unknown-action');
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -202,7 +202,7 @@ test('a method outside the allowlist is refused with a 400', async () => {
     const route = mountPlugin(dir);
     const answer = await post(route, { method: 'not-a-method', payload: {} });
     assert.equal(answer.status, 400);
-    assert.equal(answer.body.error.code, 'english-reader/unknown-method');
+    assert.equal(answer.body.error.code, 'reader/unknown-method');
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

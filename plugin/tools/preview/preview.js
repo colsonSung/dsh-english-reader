@@ -1,5 +1,5 @@
 /**
- * Local preview harness for the English Reader.
+ * Local preview harness for the Reader.
  *
  * It mounts the real page component with a mock client context and a seeded
  * local shelf, so the library and the reader can be inspected without a
@@ -145,7 +145,7 @@ const ctx = {
 
 apply(ctx);
 
-const page = registrations.find((row) => row.options?.key === 'english-reader');
+const page = registrations.find((row) => row.options?.key === 'reader');
 if (page === undefined) throw new Error('the reader did not register its main page');
 
 const container = document.getElementById('reader');

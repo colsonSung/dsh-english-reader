@@ -1,4 +1,4 @@
-# english-reader — 接口契约 (Interface Contract)
+# reader — 接口契约 (Interface Contract)
 
 版本: 1.0 · 状态: 已冻结（实现必须严格遵守，否则集成会失败）
 

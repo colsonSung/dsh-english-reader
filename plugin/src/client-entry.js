@@ -11,8 +11,8 @@ import { STYLE } from './ui/styles.js';
 import { EnglishReaderPage } from './ui/page.js';
 import { shelfReady } from './lib/store.js';
 
-const NS = 'englishReader';
-const PLUGIN_ID = '@local/english-reader';
+const NS = 'reader';
+const PLUGIN_ID = '@local/reader';
 
 const en = {
   'tab.library': 'Library',
@@ -21,7 +21,7 @@ const en = {
   'app.crashed': 'The reader hit a problem and stopped.',
   'app.crashHint': 'Your books and notes are safe; reloading usually fixes it.',
   'app.reload': 'Reload',
-  'panel.label': 'English Reader',
+  'panel.label': 'Reader',
   'library.loading': 'Loading the local shelf…',
   'library.dropTitle': 'Drop an ebook here, or click to choose a file',
   'library.dropHint': 'EPUB · TXT · Markdown · HTML · PDF — the file stays on this machine',
@@ -292,7 +292,7 @@ const zh = {
   'app.crashed': '阅读器遇到问题，停止了。',
   'app.crashHint': '你的书和笔记都还在，重新加载一般就能恢复。',
   'app.reload': '重新加载',
-  'panel.label': '英语精读',
+  'panel.label': '阅读',
   'library.loading': '正在读取本地书库…',
   'library.dropTitle': '把电子书拖到这里，或点击选择文件',
   'library.dropHint': 'EPUB · TXT · Markdown · HTML · PDF — 文件只留在本机',
@@ -585,7 +585,7 @@ function createPageBoundary(t) {
       if (error === null) return this.props.children;
       const detail = error instanceof Error ? error.message : String(error);
       const frame = typeof error?.stack === 'string'
-        ? error.stack.split('\n').find((line) => line.includes('/english-reader/')) ?? ''
+        ? error.stack.split('\n').find((line) => line.includes('/reader/')) ?? ''
         : '';
       return h(
         'div',
@@ -662,6 +662,7 @@ export const inject = ['slots', 'locale'];
  * @param {object} ctx - the client plugin context.
  */
 export function apply(ctx) {
+  try { console.log("ER-CTX-KEYS", JSON.stringify(Object.keys(ctx).sort()), JSON.stringify(ctx.fiber?.inject ?? ctx.inject ?? null)); } catch (e) { console.log("ER-CTX-ERR", String(e)); }
   const t = ctx.locale.bind(NS);
   const PageBoundary = createPageBoundary(t);
   // One failed registration must not abort the rest.
@@ -675,8 +676,8 @@ export function apply(ctx) {
     }
   }, label);
 
-  register(() => ctx.locale.register(NS, { zh, en }), 'english-reader: dictionaries');
-  register(() => installStyles(), 'english-reader: styles');
+  register(() => ctx.locale.register(NS, { zh, en }), 'reader: dictionaries');
+  register(() => installStyles(), 'reader: styles');
 
   // Hand the books this browser still keeps over to the Host as soon as the
   // plugin loads. Waiting for the panel to open would leave the books in a
@@ -685,23 +686,23 @@ export function apply(ctx) {
   register(() => {
     void shelfReady();
     return undefined;
-  }, 'english-reader: shelf handover');
+  }, 'reader: shelf handover');
   register(
     () => ctx.slots.inject('sidebar.panellist', () => ctx.slots.register({
       name: 'sidebar.panellist',
-      id: 'english-reader',
+      id: 'reader',
       order: 20,
       label: () => t('panel.label'),
       locale: NS,
     }, PanelIcon)),
-    'english-reader: panel icon',
+    'reader: panel icon',
   );
   register(
     () => ctx.slots.inject('main', () => ctx.slots.register({
       name: 'main',
-      key: 'english-reader',
+      key: 'reader',
       locale: NS,
     }, (props) => h(PageBoundary, null, h(EnglishReaderPage, { t, build: BUILD, ...props })))),
-    'english-reader: page',
+    'reader: page',
   );
 }

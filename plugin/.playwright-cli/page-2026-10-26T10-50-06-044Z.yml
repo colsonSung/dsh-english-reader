@@ -1,0 +1,50 @@
+- generic [ref=f2e4]:
+  - generic [ref=f2e7]:
+    - generic [ref=f2e8]:
+      - button "New session" [ref=f2e9] [cursor=pointer]
+      - button "Collapse sidebar" [ref=f2e38] [cursor=pointer]
+    - button "New session" [ref=f2e41] [cursor=pointer]:
+      - generic [ref=f2e42]: New Session
+      - generic [aria-hidden]:
+        - generic:
+          - generic: ⌥
+          - generic: ⌘
+          - generic: "N"
+    - navigation "Global panels" [ref=f2e47]:
+      - button "Plugins" [ref=f2e48] [cursor=pointer]
+      - button "Automation tasks" [ref=f2e57] [cursor=pointer]
+      - button "English Reader" [ref=f2e64] [cursor=pointer]
+      - button "Open source" [ref=f2e71] [cursor=pointer]
+      - button "Onerway PMO" [ref=f2e79] [cursor=pointer]
+      - button "More" [ref=f2e86] [cursor=pointer]
+    - generic [ref=f2e96]:
+      - generic [ref=f2e97]:
+        - generic [ref=f2e98]: Workspaces
+        - generic [ref=f2e100]:
+          - button "Search sessions" [ref=f2e101] [cursor=pointer]
+          - textbox "Search session names"
+        - generic [ref=f2e105]:
+          - button "View options" [ref=f2e107] [cursor=pointer]
+          - button "Add workspace" [ref=f2e111] [cursor=pointer]
+      - tree "Sessions" [ref=f2e116]:
+        - treeitem "onerway-business-systems" [ref=f2e119] [cursor=pointer]
+        - treeitem "Default workspace" [expanded] [ref=f2e127] [cursor=pointer]
+    - button "Account menu" [ref=f2e142] [cursor=pointer]
+  - generic [ref=f2e150]:
+    - generic:
+      - banner
+    - generic [ref=f2e156]:
+      - generic [ref=f2e164]:
+        - generic [ref=f2e165]: Into the Unknown
+        - generic [ref=f2e166]: Preview
+      - button "Choose workspace" [ref=f2e168] [cursor=pointer]
+      - generic [ref=f2e176] [cursor=pointer]:
+        - generic [ref=f2e178]:
+          - textbox "Choose workspace" [ref=f2e179]
+          - generic [aria-hidden]: Choose a workspace to start
+        - generic [ref=f2e180]:
+          - generic [ref=f2e181]:
+            - button "Add files or run commands" [disabled]
+          - generic [ref=f2e182]:
+            - button "Send message" [disabled]
+  - button "Change appearance" [ref=f2e185] [cursor=pointer]

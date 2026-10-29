@@ -1,7 +1,7 @@
 // The host tests must never reach the network: point the MiniMax key file at
 // a path that does not exist, so the channel stays off and the fake Host model
 // answers instead.
-process.env.ENGLISH_READER_MINIMAX_KEY_FILE = '/nonexistent/english-reader/minimax.key';
+process.env.READER_MINIMAX_KEY_FILE = '/nonexistent/reader/minimax.key';
 /**
  * AI 通道单元测试（对应 CONTRACT-AI.md 1 与 2）。
  *
@@ -439,7 +439,7 @@ test('客户端在 ok 为 true 时返回 result', async () => {
 test('客户端在 ok 为 false 时抛出中文错误', async () => {
   await assert.rejects(
     () => askAi('word', { word: 'middle' }, {
-      fetch: async () => fakeResponse({ ok: false, error: { code: 'english-reader/failed', message: '宿主未配置可用模型，AI 释义不可用' } }),
+      fetch: async () => fakeResponse({ ok: false, error: { code: 'reader/failed', message: '宿主未配置可用模型，AI 释义不可用' } }),
     }),
     (error) => {
       assert.equal(error.message, '宿主未配置可用模型，AI 释义不可用');
@@ -449,7 +449,7 @@ test('客户端在 ok 为 false 时抛出中文错误', async () => {
 
   await assert.rejects(
     () => askAi('word', { word: 'middle' }, {
-      fetch: async () => fakeResponse({ ok: false, error: { code: 'english-reader/failed', message: '' } }),
+      fetch: async () => fakeResponse({ ok: false, error: { code: 'reader/failed', message: '' } }),
     }),
     (error) => {
       assert.match(error.message, /AI 辅助请求失败/);
@@ -516,7 +516,7 @@ test('宿主路由注册在 connection 上，并返回 { ok, result } 信封', a
   assert.deepEqual(route.methods, ['POST']);
   assert.equal(route.requestBody, 'buffered');
 
-  const request = new Request('http://127.0.0.1/api/english-reader', {
+  const request = new Request('http://127.0.0.1/api/reader', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ method: 'translate', payload: { text: 'Hello' } }),
@@ -550,7 +550,7 @@ test('宿主路由在失败时返回 { ok: false, error } 信封', async () => {
   };
   apply(ctx);
 
-  const request = new Request('http://127.0.0.1/api/english-reader', {
+  const request = new Request('http://127.0.0.1/api/reader', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ method: 'word', payload: { word: 'middle' } }),

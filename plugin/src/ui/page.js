@@ -35,7 +35,7 @@ class SectionBoundary extends Component {
   }
 
   componentDidCatch(error) {
-    console.warn('[english-reader] section failed: ' + (error instanceof Error ? error.message : String(error)));
+    console.warn('[reader] section failed: ' + (error instanceof Error ? error.message : String(error)));
   }
 
   render() {
@@ -46,7 +46,7 @@ class SectionBoundary extends Component {
     const { t } = this.props;
     const detail = error instanceof Error ? error.message : String(error);
     const frame = typeof error?.stack === 'string'
-      ? error.stack.split('\n').find((line) => line.includes('/english-reader/')) ?? ''
+      ? error.stack.split('\n').find((line) => line.includes('/reader/')) ?? ''
       : '';
     return h(
       'div',
@@ -68,7 +68,7 @@ class SectionBoundary extends Component {
   }
 }
 
-const VIEW_KEY = 'english-reader:library-view';
+const VIEW_KEY = 'reader:library-view';
 
 /**
  * How long the import card stays on screen at least.

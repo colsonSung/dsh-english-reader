@@ -1,4 +1,4 @@
-# English Reader（英语精读）
+# Reader（阅读）
 
 一个 DeepSeek Harness 客户端插件：导入电子书，逐句精读——**听朗读**、**跟着语音打字**、**朗读后与原文比对**。
 
@@ -186,7 +186,7 @@
 **书库由宿主托管，落在磁盘上。**目录在当前 profile 里：
 
 ```
-<profileDir>/english-reader/
+<profileDir>/reader/
 ├── books/
 │   └── <bookId>.json      一本书一个文件（整条记录，含正文）
 ├── vocabulary.json        生词本
@@ -194,7 +194,7 @@
 └── podcasts.json          播客逐字稿
 ```
 
-`<profileDir>` 就是 `~/.dsh/profiles/<profile>`（拿不到时退回 `~/.dsh/english-reader`）。
+`<profileDir>` 就是 `~/.dsh/profiles/<profile>`（拿不到时退回 `~/.dsh/reader`）。
 
 ### 为什么不是浏览器 IndexedDB
 
@@ -229,7 +229,7 @@
 ### 宿主不可用时怎么办
 
 宿主半边要**重启 Harness 应用**才生效。在「已重启」和「还没重启」之间，客户端会一直用旧的
-IndexedDB（读写都落在本地），并在宿主答复 `english-reader/unknown-method` 时自动切回来。
+IndexedDB（读写都落在本地），并在宿主答复 `reader/unknown-method` 时自动切回来。
 所以**先刷新页面、后重启应用**这个顺序不会把功能弄坏。
 
 ### 浏览器本地库升级不会卡死
@@ -247,7 +247,7 @@ IndexedDB（读写都落在本地），并在宿主答复 `english-reader/unknow
 - 下面是这本书已有的笔记：每条带原文引文、你的文字、时间
 - 每条笔记有「跳到这句话」（回到原文的位置）和一个删除按钮
 
-笔记存在**宿主的书库里**（`<profileDir>/english-reader/notes.json`，按书分组），刷新、重启、换浏览器都在，不出本机。
+笔记存在**宿主的书库里**（`<profileDir>/reader/notes.json`，按书分组），刷新、重启、换浏览器都在，不出本机。
 
 ## 每一段右侧的三个按钮
 
@@ -296,7 +296,7 @@ IndexedDB（读写都落在本地），并在宿主答复 `english-reader/unknow
 书库页顶栏的 🌐 按钮打开在线书库：按书名或作者搜索，点「获取」直接下载、解析并入库。
 
 - **书源**：Project Gutenberg（公版书），用的是官方机器可读目录 `pg_catalog.csv`（约 21 MB）和官方下载直链
-- **目录放在宿主**：目录太大，不进 bundle；宿主第一次用到时下载一次，缓存在 `~/.dsh/english-reader/gutenberg-catalog.csv`（七天过期），之后在内存里搜索
+- **目录放在宿主**：目录太大，不进 bundle；宿主第一次用到时下载一次，缓存在 `~/.dsh/reader/gutenberg-catalog.csv`（七天过期），之后在内存里搜索
 - **下载很稳**：连接经常被切断，所以每个文件都按 Range 分块下载并重试，失败时回退到分块路径
 - **导入即干净**：公版书自带授权声明与扉页，导入时自动去掉（`stripBoilerplate`）
 
@@ -306,13 +306,13 @@ IndexedDB（读写都落在本地），并在宿主答复 `english-reader/unknow
 
 - 接口：`POST /v1/image_generation`，模型 `image-01`，比例 `2:3`（书的标准开本）
 - 提示词只给**书名**（图像模型把长标题和作者名都会写错），并明确要求「只出现书名，不要作者名、不要出版社」
-- 图片在宿主侧下载成 data URL 存进书库（`<profileDir>/english-reader/books/<id>.json`），书架不依赖网络
+- 图片在宿主侧下载成 data URL 存进书库（`<profileDir>/reader/books/<id>.json`），书架不依赖网络
 - **书先入库、封面随后补上**：导入后立刻能看到书，封面几秒后自己换上；也可以在书的 ⋯ 菜单里点「生成封面」重画
 - **画封面有反馈**：画的过程中书库里有一条「正在生成封面…」的提示，封面卡片上盖着一层转圈的遮罩；画完提示变成「封面已生成」，失败则说明失败原因（画一张要十几秒，不能让人干等）
 
 ## MiniMax 通道（语音 + 模型）
 
-宿主半边持有 MiniMax 的 API Key，客户端通过 `/api/english-reader` 请求：
+宿主半边持有 MiniMax 的 API Key，客户端通过 `/api/reader` 请求：
 
 | 方法 | 作用 | 实现 |
 |---|---|---|
@@ -324,7 +324,7 @@ IndexedDB（读写都落在本地），并在宿主答复 `english-reader/unknow
 **Key 不进代码、不进 bundle**。读取顺序：
 
 1. 环境变量 `MINIMAX_API_KEY`
-2. 私有文件 `~/.dsh/english-reader/minimax.key`（权限 600）
+2. 私有文件 `~/.dsh/reader/minimax.key`（权限 600）
 3. 环境变量 `ENGLISH_READER_MINIMAX_KEY_FILE` 可改这个文件的位置（测试用它来关掉通道）
 
 没有 Key 时：查词/翻译回落到宿主自己的模型，朗读回落到浏览器的 Web Speech API，学习者不会听到任何变化。
@@ -437,7 +437,7 @@ IndexedDB（读写都落在本地），并在宿主答复 `english-reader/unknow
 ## 点词查词怎么工作
 
 1. 页面点词 → 客户端 `askAi('word', { word, sentence })`；
-2. 客户端 POST 到宿主路由 `/api/english-reader`；
+2. 客户端 POST 到宿主路由 `/api/reader`；
 3. 宿主用 `ctx.agentDefaultModel.currentSelection()` 选模型、`ctx.llm.prepareCall()` + `prepared.stream()` 跑一次流式调用，要求模型**只输出 JSON**（解析失败自动重试一次）；
 4. 词卡拿到 `{ word, phonetic, partOfSpeech, definition, examples[], contextNote }`。
 
@@ -504,7 +504,7 @@ src/
   client-entry.js        插件入口：注册侧栏面板入口 + 主面板页面
   lib/
     chunks.js            chunk 懒加载器（PDF 用）
-    remote.js            客户端 → 宿主的书库通道（POST /api/english-reader）
+    remote.js            客户端 → 宿主的书库通道（POST /api/reader）
     store.js             书库门面：宿主优先，本地 IndexedDB 兜底 + 一次性迁移
     local-store.js       浏览器 IndexedDB（兜底与迁移来源）
     notes.js             段落笔记

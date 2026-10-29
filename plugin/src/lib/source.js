@@ -6,8 +6,8 @@
  * book; the file comes back as the bytes of an EPUB.
  */
 
-/** The route the Host registers for the English reader. */
-export const ROUTE = '/api/english-reader';
+/** The route the Host registers for the reader. */
+export const ROUTE = '/api/reader';
 
 /** Raised when the Host could not be reached at all. */
 const NETWORK_MESSAGE = '无法连接宿主服务，在线书库暂不可用';
@@ -37,7 +37,7 @@ export async function askSource(payload, options = {}) {
     throw failure;
   }
   if (response.status === 404 || response.status === 405) {
-    throw new Error('宿主尚未加载英语精读插件，请重启应用后重试');
+    throw new Error('宿主尚未加载阅读插件，请重启应用后重试');
   }
   let body;
   try {

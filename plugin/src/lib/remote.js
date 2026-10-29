@@ -2,9 +2,9 @@
  * Client half of the shelf channel.
  *
  * The Host owns the book shelf and writes it to disk; the page only asks for
- * it over the Fetch route `/api/english-reader`. A Host that has not been
+ * it over the Fetch route `/api/reader`. A Host that has not been
  * restarted yet does not know the `shelf` method and answers
- * `english-reader/unknown-method`; the client has to read that as "this Host
+ * `reader/unknown-method`; the client has to read that as "this Host
  * has no shelf" and fall back to the browser's own IndexedDB, so the grey
  * release window (the page is refreshed first, the application restarted
  * later) keeps working.
@@ -12,7 +12,7 @@
  * The error codes are the contract between this module and the stores:
  *   - `shelf-unavailable`: the Host has no shelf. The stores use the local
  *     IndexedDB and remember that the Host is gone, so they stop asking.
- *   - `english-reader/failed`: the Host answered and refused. The message is
+ *   - `reader/failed`: the Host answered and refused. The message is
  *     the Chinese sentence the learner should read.
  *
  * Nothing here depends on React or on any Host package: this module only
@@ -20,13 +20,13 @@
  */
 
 /** The route the Host registers for the English reader. */
-export const ROUTE = '/api/english-reader';
+export const ROUTE = '/api/reader';
 
 /** The error code that says: the Host has no shelf (yet). */
 export const SHELF_UNAVAILABLE = 'shelf-unavailable';
 
 /** The error code of a shelf action the Host refused. */
-export const SHELF_FAILED = 'english-reader/failed';
+export const SHELF_FAILED = 'reader/failed';
 
 /**
  * The Host codes that mean "this Host does not know the shelf yet".
@@ -34,8 +34,18 @@ export const SHELF_FAILED = 'english-reader/failed';
  * `unknown-method` is what an application that has not been restarted
  * answers; `unknown-action` is what a Host that knows the route but not the
  * action answers. Both mean the same thing for the page.
+ *
+ * The old `english-reader/…` codes are still recognised: the page is rebuilt
+ * long before the application is restarted, and a Host that has not restarted
+ * yet still answers with the old ones. Not recognising them would leave the
+ * page without a shelf in exactly the window where the fallback matters.
  */
-const UNKNOWN_CODES = new Set(['english-reader/unknown-method', 'english-reader/unknown-action']);
+const UNKNOWN_CODES = new Set([
+  'reader/unknown-method',
+  'reader/unknown-action',
+  'english-reader/unknown-method',
+  'english-reader/unknown-action',
+]);
 
 /** Raised when the Host could not be reached at all. */
 const NETWORK_MESSAGE = '无法连接宿主服务，书库暂时不可用';

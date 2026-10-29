@@ -19,7 +19,7 @@ import { dirname, join } from 'node:path';
 export const CATALOG_URL = 'https://www.gutenberg.org/cache/epub/feeds/pg_catalog.csv';
 
 /** Where the catalogue is cached. */
-export const CATALOG_FILE = join(homedir(), '.dsh', 'english-reader', 'gutenberg-catalog.csv');
+export const CATALOG_FILE = join(homedir(), '.dsh', 'reader', 'gutenberg-catalog.csv');
 
 /** How long a cached catalogue is considered fresh (seven days). */
 const CATALOG_TTL_MS = 7 * 24 * 60 * 60 * 1000;

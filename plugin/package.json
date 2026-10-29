@@ -1,5 +1,5 @@
 {
-  "name": "dsh-english-reader",
+  "name": "dsh-reader",
   "version": "1.3.0",
   "private": true,
   "type": "module",
@@ -8,11 +8,11 @@
   "author": "Ethan Song",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/colsonSung/dsh-english-reader.git"
+    "url": "git+https://github.com/colsonSung/dsh-reader.git"
   },
-  "homepage": "https://github.com/colsonSung/dsh-english-reader#readme",
+  "homepage": "https://github.com/colsonSung/dsh-reader#readme",
   "bugs": {
-    "url": "https://github.com/colsonSung/dsh-english-reader/issues"
+    "url": "https://github.com/colsonSung/dsh-reader/issues"
   },
   "keywords": [
     "deepseek-harness",
@@ -22,7 +22,8 @@
     "reading",
     "vocabulary",
     "tts",
-    "language-learning"
+    "language-learning",
+    "reader"
   ],
   "exports": {
     ".": "./index.js",

@@ -6,7 +6,7 @@
  *
  * The API key never lives in the bundle. It is read from the environment
  * (`MINIMAX_API_KEY`) or from a private file outside the workspace
- * (`~/.dsh/english-reader/minimax.key`), so the source and the client bundle
+ * (`~/.dsh/reader/minimax.key`), so the source and the client bundle
  * stay free of secrets.
  *
  * Every dependency is injectable, so the behaviour can be tested without the
@@ -30,7 +30,7 @@ export const TTS_MODEL = 'speech-02-hd';
 export const ASR_MODEL = 'asr-1.0';
 
 /** The private file that holds the API key when the environment has none. */
-export const KEY_FILE = join(homedir(), '.dsh', 'english-reader', 'minimax.key');
+export const KEY_FILE = join(homedir(), '.dsh', 'reader', 'minimax.key');
 
 /** Wall-clock budget for one MiniMax request. */
 const DEFAULT_TIMEOUT_MS = 30000;
@@ -46,8 +46,12 @@ export function readApiKey(options = {}) {
   const fromEnv = typeof env.MINIMAX_API_KEY === 'string' ? env.MINIMAX_API_KEY.trim() : '';
   if (fromEnv !== '') return fromEnv;
   // The file can be pointed elsewhere, which is how the tests stay off the
-  // network.
-  const file = options.keyFile ?? process.env.ENGLISH_READER_MINIMAX_KEY_FILE ?? KEY_FILE;
+  // network. The old variable name still works: the plugin was renamed, and
+  // somebody may already have exported it.
+  const file = options.keyFile
+    ?? process.env.READER_MINIMAX_KEY_FILE
+    ?? process.env.ENGLISH_READER_MINIMAX_KEY_FILE
+    ?? KEY_FILE;
   try {
     if (existsSync(file)) {
       const content = readFileSync(file, 'utf8').trim();

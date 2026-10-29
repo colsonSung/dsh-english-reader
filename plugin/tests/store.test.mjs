@@ -368,12 +368,12 @@ test('宿主答失败时给出宿主的中文原因', async () => {
       fetch: async () => ({
         status: 200,
         async json() {
-          return { ok: false, error: { code: 'english-reader/failed', message: '书库写入失败' } };
+          return { ok: false, error: { code: 'reader/failed', message: '书库写入失败' } };
         },
       }),
     }),
     (error) => {
-      assert.equal(error.code, 'english-reader/failed');
+      assert.equal(error.code, 'reader/failed');
       assert.equal(error.message, '书库写入失败');
       return true;
     },
@@ -384,12 +384,12 @@ test('宿主答失败时给出宿主的中文原因', async () => {
       fetch: async () => ({
         status: 200,
         async json() {
-          return { ok: false, error: { code: 'english-reader/failed', message: '' } };
+          return { ok: false, error: { code: 'reader/failed', message: '' } };
         },
       }),
     }),
     (error) => {
-      assert.equal(error.code, 'english-reader/failed');
+      assert.equal(error.code, 'reader/failed');
       assert.match(error.message, /[\u4e00-\u9fa5]/);
       return true;
     },

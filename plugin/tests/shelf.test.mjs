@@ -13,8 +13,8 @@ import { createShelf } from '../src/host/shelf.js';
  * @returns {{ root: string, dir: string, shelf: object }} 临时根目录、书库目录与书库。
  */
 function makeShelf() {
-  const root = mkdtempSync(join(tmpdir(), 'english-reader-shelf-'));
-  const dir = join(root, 'english-reader');
+  const root = mkdtempSync(join(tmpdir(), 'reader-shelf-'));
+  const dir = join(root, 'reader');
   return { root, dir, shelf: createShelf({ dir }) };
 }
 
@@ -121,7 +121,7 @@ test('id 里的路径字符不会逃出书库目录', async () => {
     // `.` 和 `/` 都不在允许的字符里，一律换成下划线。
     assert.deepEqual(readdirSync(join(dir, 'books')), ['___evil.json']);
     // 书库目录外面没有多出文件。
-    assert.deepEqual(readdirSync(root), ['english-reader']);
+    assert.deepEqual(readdirSync(root), ['reader']);
     const got = await shelf.getBook('../evil');
     assert.equal(got.id, '../evil');
     assert.equal(got.title, 'evil');

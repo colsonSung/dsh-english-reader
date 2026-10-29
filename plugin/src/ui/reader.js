@@ -66,7 +66,9 @@ function floating(element) {
   return createPortal(element, document.body);
 }
 
-const TYPING_SETTINGS_KEY = 'english-reader:typing';
+const TYPING_SETTINGS_KEY = 'reader:typing';
+/** Where the settings lived before the plugin was renamed. */
+const LEGACY_TYPING_SETTINGS_KEY = 'english-reader:typing';
 
 const DEFAULT_TYPING_SETTINGS = {
   fontStyle: 'mono',
@@ -245,7 +247,17 @@ function format(template, values) {
  */
 function loadTypingSettings() {
   try {
-    const raw = globalThis.localStorage?.getItem(TYPING_SETTINGS_KEY);
+    let raw = globalThis.localStorage?.getItem(TYPING_SETTINGS_KEY);
+    // The plugin was renamed; the learner's own replacements live under the
+    // old key. Carry them over once instead of resetting them.
+    if (raw === undefined || raw === null) {
+      const legacy = globalThis.localStorage?.getItem(LEGACY_TYPING_SETTINGS_KEY);
+      if (legacy !== undefined && legacy !== null) {
+        raw = legacy;
+        globalThis.localStorage?.setItem(TYPING_SETTINGS_KEY, legacy);
+        globalThis.localStorage?.removeItem(LEGACY_TYPING_SETTINGS_KEY);
+      }
+    }
     if (raw === undefined || raw === null) return { ...DEFAULT_TYPING_SETTINGS };
     return { ...DEFAULT_TYPING_SETTINGS, ...JSON.parse(raw) };
   } catch {

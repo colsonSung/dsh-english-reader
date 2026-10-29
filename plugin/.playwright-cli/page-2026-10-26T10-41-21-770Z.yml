@@ -1,0 +1,87 @@
+- generic [ref=e4]:
+  - generic [ref=e7]:
+    - generic [ref=e8]:
+      - button "New session" [ref=e9] [cursor=pointer]
+      - button "Collapse sidebar" [ref=e38] [cursor=pointer]
+    - button "New session" [ref=e41] [cursor=pointer]:
+      - generic [ref=e42]: New Session
+      - generic [aria-hidden]:
+        - generic:
+          - generic: ⌥
+          - generic: ⌘
+          - generic: "N"
+    - navigation "Global panels" [ref=e47]:
+      - button "Plugins" [ref=e48] [cursor=pointer]
+      - button "Automation tasks" [ref=e57] [cursor=pointer]
+      - button "English Reader" [ref=e64] [cursor=pointer]
+      - button "Open source" [ref=e71] [cursor=pointer]
+      - button "Onerway PMO" [ref=e79] [cursor=pointer]
+      - button "More" [ref=e86] [cursor=pointer]
+    - generic [ref=e96]:
+      - generic [ref=e97]:
+        - generic [ref=e98]: Workspaces
+        - generic [ref=e100]:
+          - button "Search sessions" [ref=e101] [cursor=pointer]
+          - textbox "Search session names"
+        - generic [ref=e105]:
+          - button "View options" [ref=e107] [cursor=pointer]
+          - button "Add workspace" [ref=e111] [cursor=pointer]
+      - tree "Sessions" [ref=e116]:
+        - treeitem "onerway-business-systems" [ref=e119] [cursor=pointer]
+        - generic [ref=e125]:
+          - treeitem "Default workspace" [expanded] [ref=e127] [cursor=pointer]
+          - treeitem "New Session" [ref=e193] [cursor=pointer]
+          - treeitem "Running 调整行距与段距 12min" [ref=e267] [cursor=pointer]:
+            - generic [ref=e198]: Running
+            - generic [ref=e204]: 调整行距与段距
+            - generic [ref=e205]: 12min
+          - treeitem "这些参考文件每次任务完成时 17min" [ref=e268] [cursor=pointer]:
+            - generic [ref=e209]: 这些参考文件每次任务完成时
+            - generic [ref=e210]: 17min
+          - treeitem "Running PMO 插件的version report抽屉页看 17min" [ref=e212] [cursor=pointer]:
+            - generic [ref=e213]: Running
+            - generic [ref=e219]: PMO 插件的version report抽屉页看
+            - generic [ref=e220]: 17min
+    - button "Account menu" [ref=e140] [cursor=pointer]:
+      - generic [ref=e221]: 宋博
+  - generic [ref=e222]:
+    - generic [ref=e223]:
+      - generic [ref=e224]:
+        - button "＋" [active] [ref=e225] [cursor=pointer]
+        - button "🌐" [ref=e226] [cursor=pointer]
+      - tablist [ref=e227]:
+        - tab "Library" [selected] [ref=e228] [cursor=pointer]
+        - tab "Reader" [ref=e229] [cursor=pointer]
+        - tab "Vocabulary" [ref=e230] [cursor=pointer]
+      - button "⋯" [ref=e232] [cursor=pointer]
+    - generic [ref=e234]:
+      - generic [ref=e235]:
+        - generic [ref=e236]: Library
+        - generic "Build" [ref=e237]: 2026-10-26 10:37
+      - generic [ref=e238]:
+        - generic [ref=e239]:
+          - generic [ref=e240]: Read
+          - generic [ref=e241]:
+            - generic [ref=e242]: "0"
+            - generic [ref=e243]: min
+            - generic [ref=e244]: "0"
+            - generic [ref=e245]: sec
+        - generic [ref=e246]:
+          - generic [ref=e247]: Played
+          - generic [ref=e248]:
+            - generic [ref=e249]: "0"
+            - generic [ref=e250]: min
+            - generic [ref=e251]: "0"
+            - generic [ref=e252]: sec
+        - generic [ref=e253]:
+          - generic [ref=e254]: Reading speed
+          - generic [ref=e255]:
+            - generic [ref=e256]: "0"
+            - generic [ref=e257]: WPM
+      - generic [ref=e258]:
+        - searchbox "Search by title or author" [ref=e260]
+        - button "▦" [ref=e261] [cursor=pointer]
+      - generic [ref=e262]:
+        - generic [ref=e265]: No books yet
+        - generic [ref=e266]: "Import an EPUB (or a plain text file) and practise it sentence by sentence: listen, type along with the speech, or read aloud and check the transcript."
+  - button "Change appearance" [ref=e183] [cursor=pointer]

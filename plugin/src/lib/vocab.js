@@ -29,7 +29,7 @@ export const REVIEW_INTERVAL_DAYS = [1, 2, 4, 7, 15, 30];
  * The event the vocabulary panel listens to, so a word collected somewhere
  * else (the reader, the word card) shows up in an open panel right away.
  */
-export const VOCAB_CHANGED_EVENT = 'english-reader:vocab-changed';
+export const VOCAB_CHANGED_EVENT = 'reader:vocab-changed';
 
 /**
  * @typedef {object} VocabEntry

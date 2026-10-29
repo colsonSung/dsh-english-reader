@@ -114,7 +114,7 @@ test('the bundle registers a sidebar panel entry and a main panel page', async (
   module.apply(ctx)
 
   assert.equal(dictionaries.length, 1)
-  assert.equal(dictionaries[0].ns, 'englishReader')
+  assert.equal(dictionaries[0].ns, 'reader')
   assert.ok(dictionaries[0].dicts.en['reader.modeType'])
   assert.ok(dictionaries[0].dicts.zh['reader.modeType'])
 
@@ -122,8 +122,8 @@ test('the bundle registers a sidebar panel entry and a main panel page', async (
   const page = registrations.find((entry) => entry.options?.name === 'main')
   assert.ok(panel, 'the sidebar panel entry must be registered')
   assert.ok(page, 'the main panel page must be registered')
-  assert.equal(panel.options.id, 'english-reader')
-  assert.equal(page.options.key, 'english-reader')
+  assert.equal(panel.options.id, 'reader')
+  assert.equal(page.options.key, 'reader')
 })
 
 test('the page renders the library empty state', async () => {

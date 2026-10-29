@@ -21,7 +21,7 @@ import { Modal } from './library.js';
 import { MicIcon, NextIcon, PauseIcon, PlayIcon, PrevIcon, TrashIcon } from './icons.js';
 
 /** The plugin that owns the stylesheet of this module. */
-const PLUGIN_ID = '@local/english-reader';
+const PLUGIN_ID = '@local/reader';
 
 /** The speech rates the learner can pick. */
 const RATES = [0.75, 1, 1.25, 1.5, 2];

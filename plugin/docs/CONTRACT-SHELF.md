@@ -1,4 +1,4 @@
-# english-reader — 书库持久化契约 (Shelf Persistence Contract)
+# reader — 书库持久化契约 (Shelf Persistence Contract)
 
 版本: 1.0 · 状态: 已冻结（宿主半边与客户端半边都必须严格遵守）
 
@@ -21,7 +21,7 @@
 
 ## 1. 传输层
 
-复用已有的路由 `POST /api/english-reader`（`index.js` 里的 `ROUTE`）。
+复用已有的路由 `POST /api/reader`（`index.js` 里的 `ROUTE`）。
 
 请求体：
 
@@ -42,7 +42,7 @@
 ```
 
 `method: "shelf"` 不在旧的 `METHODS` 集合里，所以**未重启的旧宿主**会回
-`english-reader/unknown-method`（HTTP 400）。客户端必须把它当成「宿主书库不可用」，
+`reader/unknown-method`（HTTP 400）。客户端必须把它当成「宿主书库不可用」，
 退回本地 IndexedDB，而不是报错——这让灰度期间（先刷新页面、后重启应用）依然可用。
 
 ---
@@ -126,7 +126,7 @@ PodcastEpisode = { id, bookId, chapterKey, scope, title, summary,
 ## 3. 宿主侧存储布局
 
 ```
-<profileDir>/english-reader/          profileDir = ctx.profileContext?.dir
+<profileDir>/reader/          profileDir = ctx.profileContext?.dir
 ├── books/
 │   └── <bookId>.json                 一本书一个文件（整条记录）
 ├── vocabulary.json                   { "<id>": VocabEntry }
@@ -134,7 +134,7 @@ PodcastEpisode = { id, bookId, chapterKey, scope, title, summary,
 └── podcasts.json                     { "<id>": PodcastEpisode }
 ```
 
-- `profileDir` 未知时退回 `~/.dsh/english-reader/`（与 MiniMax key、Gutenberg 目录同处）。
+- `profileDir` 未知时退回 `~/.dsh/reader/`（与 MiniMax key、Gutenberg 目录同处）。
 - **一本书一个文件**：一本小说改一次进度就重写一个几 MB 的文件；把所有书塞进一个大 JSON
   会让每次读进度都重写整本书。
 - 写入**必须原子**：先写 `<file>.tmp`，再 `rename` 覆盖。断电或崩溃不能留下半个 JSON。
@@ -148,7 +148,7 @@ PodcastEpisode = { id, bookId, chapterKey, scope, title, summary,
 ```js
 /**
  * 宿主侧的书库仓库：磁盘上的持久化书架。
- * @param {{ dir?: string }} [options] - dir 是书库根目录，缺省用 <profileDir>/english-reader
+ * @param {{ dir?: string }} [options] - dir 是书库根目录，缺省用 <profileDir>/reader
  */
 export function createShelf(options = {}) → Shelf
 ```
@@ -179,12 +179,12 @@ export function createShelf(options = {}) → Shelf
 
 - `METHODS` 集合里加上 `'shelf'`。
 - 在 fetch 处理函数里，`method === 'shelf'` 时按 `payload.action` 分派到 `Shelf`。
-- 未知的 action 返回 `english-reader/unknown-action`（HTTP 400）。
+- 未知的 action 返回 `reader/unknown-action`（HTTP 400）。
 - `Shelf` 的目录这样取：
 
 ```js
 const profileDir = ctx?.profileContext?.dir ?? ''
-const dir = profileDir !== '' ? join(profileDir, 'english-reader') : undefined
+const dir = profileDir !== '' ? join(profileDir, 'reader') : undefined
 ```
 
 - 插件的 `inject` 需要加上 `'profileContext'`（与 onerway-pmo 一致）。
@@ -196,7 +196,7 @@ const dir = profileDir !== '' ? join(profileDir, 'english-reader') : undefined
 ### 6.1 `src/lib/remote.js`（新增）
 
 ```js
-export const ROUTE = '/api/english-reader';
+export const ROUTE = '/api/reader';
 export const SHELF_UNAVAILABLE = 'shelf-unavailable';
 
 /**
@@ -211,8 +211,8 @@ export async function callShelf(action, payload = {}, options = {});
 ```
 
 - 网络错误、HTTP 404 / 405 / 400、`ok: false` 且 `error.code` 为
-  `english-reader/unknown-method` —— 一律抛 `code === SHELF_UNAVAILABLE` 的错误。
-- 其余失败抛 `error.code === 'english-reader/failed'` 的错误，message 用中文。
+  `reader/unknown-method` —— 一律抛 `code === SHELF_UNAVAILABLE` 的错误。
+- 其余失败抛 `error.code === 'reader/failed'` 的错误，message 用中文。
 
 ### 6.2 `src/lib/local-store.js`（新增，现有 `store.js` 的实现搬过来）
 

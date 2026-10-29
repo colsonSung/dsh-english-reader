@@ -1,4 +1,4 @@
-# english-reader — 第二轮契约（TingYue 对标：词典+AI / 生词本 / 进度 / 计划）
+# reader — 第二轮契约（TingYue 对标：词典+AI / 生词本 / 进度 / 计划）
 
 版本: 2.0 · 状态: 已冻结
 
@@ -7,7 +7,7 @@
 数据流：
 
 ```
-点词 ──► WordCard（src/ui/wordcard.js）──► askAi('word')  ──► Host /api/english-reader ──► ctx.llm
+点词 ──► WordCard（src/ui/wordcard.js）──► askAi('word')  ──► Host /api/reader ──► ctx.llm
    │                                                      └─► 本地词典兜底（无 AI 时）
    └──► 生词本（src/lib/vocab.js）──► IndexedDB ──► 进度 / 复习队列
 ```
@@ -25,28 +25,28 @@ ctx.inject(['connection'], (connectionCtx) => {
   connectionCtx.effect(() => {
     try {
       return connectionCtx.connection.fetch.register({
-        path: '/api/english-reader',
+        path: '/api/reader',
         methods: ['POST'],
         requestBody: 'buffered',
         fetch: async (request) => {
           let body
           try { body = await request.json() } catch {
-            return Response.json({ ok: false, error: { code: 'english-reader/bad-request', message: 'body is not JSON', details: {} } }, { status: 400 })
+            return Response.json({ ok: false, error: { code: 'reader/bad-request', message: 'body is not JSON', details: {} } }, { status: 400 })
           }
           const method = typeof body?.method === 'string' ? body.method : ''
           try {
             return Response.json({ ok: true, result: await handle(method, body?.payload ?? {}) })
           } catch (error) {
-            return Response.json({ ok: false, error: { code: 'english-reader/failed', message: String(error?.message ?? error), details: {} } }, { status: 200 })
+            return Response.json({ ok: false, error: { code: 'reader/failed', message: String(error?.message ?? error), details: {} } }, { status: 200 })
           }
         },
       })
     } catch (error) {
       // 重复 apply（热重载）时路由已存在，记日志后返回，不让插件整体失败
-      console.warn('[english-reader] route registration failed: ' + String(error))
+      console.warn('[reader] route registration failed: ' + String(error))
       return () => {}
     }
-  }, 'english-reader: /api/english-reader')
+  }, 'reader: /api/reader')
 })
 ```
 
@@ -139,7 +139,7 @@ export async function runAiMethod(method, payload);
 export async function askAi(method, payload);
 ```
 
-- `fetch('/api/english-reader', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ method, payload }) })`
+- `fetch('/api/reader', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ method, payload }) })`
 - 解析 `{ ok, result }`；`ok === false` 时抛出带中文文案的 Error。
 - 网络失败同样抛中文 Error（例如「无法连接宿主服务」）。
 
@@ -147,7 +147,7 @@ export async function askAi(method, payload);
 
 ## 3. 生词本数据层（负责人: vocab）
 
-存储：与现有书籍同一个 IndexedDB（库名 `english-reader`），新增 object store `vocabulary`。
+存储：与现有书籍同一个 IndexedDB（库名 `reader`），新增 object store `vocabulary`。
 **数据库版本由 lead 统一升到 2 并在 `src/lib/store.js` 里建表**；vocab.js 直接复用 lead 提供的存储入口（见下）。
 
 `src/lib/vocab.js`：

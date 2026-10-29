@@ -1,7 +1,7 @@
 /**
  * Client half of the AI assist channel.
  *
- * The page talks to the Host over the Fetch route `/api/english-reader`; the
+ * The page talks to the Host over the Fetch route `/api/reader`; the
  * Host answers with `{ ok, result }` or `{ ok: false, error }`. Every failure
  * that reaches the learner is a Chinese sentence — the page never shows a raw
  * stack or an English transport error.
@@ -11,7 +11,7 @@
  */
 
 /** The route the Host registers for the English reader. */
-export const ROUTE = '/api/english-reader';
+export const ROUTE = '/api/reader';
 
 /** Raised when the Host could not be reached at all. */
 const NETWORK_MESSAGE = '无法连接宿主服务，AI 功能暂不可用';
@@ -59,7 +59,7 @@ export async function askAi(method, payload, options = {}) {
   // The route answers with 200 even for a failed assist, but a Host that has
   // not loaded the plugin yet answers 404 through the SPA fallback.
   if (response.status === 404 || response.status === 405) {
-    throw new Error('宿主尚未加载英语精读插件，请重启应用后重试');
+    throw new Error('宿主尚未加载阅读插件，请重启应用后重试');
   }
 
   let body;

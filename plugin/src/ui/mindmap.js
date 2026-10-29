@@ -16,7 +16,7 @@ import { createElement as h, useEffect, useMemo, useState } from 'react';
 import { Modal } from './library.js';
 
 /** The plugin id; the host removes the stylesheet together with the plugin. */
-const PLUGIN_ID = '@local/english-reader';
+const PLUGIN_ID = '@local/reader';
 
 /**
  * The stylesheet of this module.

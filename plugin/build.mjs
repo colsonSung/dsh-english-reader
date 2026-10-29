@@ -1,14 +1,8 @@
 import { build } from 'esbuild';
 import { createRequire } from 'node:module';
 import { readFile } from 'node:fs/promises';
-import { readFileSync } from 'node:fs';
 
 const require = createRequire(import.meta.url);
-
-// The bundle id must equal the package name: the shell's module loader keys
-// the registered factory by that id, and the bundle row in the profile patch
-// resolves the package by the same name.
-const PACKAGE_ID = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')).name;
 
 /**
  * Wrap a bundle in the shell's module-loader factory.
@@ -18,7 +12,7 @@ const PACKAGE_ID = JSON.parse(readFileSync(new URL('./package.json', import.meta
 const wrap = (chunk) => ({
   banner: {
     js: `window.__ModuleLoader__.load({
-	id: "${PACKAGE_ID}",
+	id: "@local/reader",
 ${chunk ? `\tchunk: "${chunk}",\n` : ''}	factory: (require) => {
 		var module = { exports: {} };
 		var exports = module.exports;`,

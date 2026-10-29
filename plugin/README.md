@@ -477,7 +477,7 @@ node build.mjs            # 生成 client.js 与 client.pdf.js
 plugin_manager install_bundle  →  /绝对路径/english-reader
 ```
 
-重启（或刷新）应用后，左侧栏「Global panels」会出现 **English Reader** 图标。
+重启（或刷新）应用后，左侧栏「Global panels」会出现 **Reader** 图标。
 
 ## 开发
 

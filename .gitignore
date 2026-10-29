@@ -20,3 +20,6 @@ state.json
 credentials*
 minimax.key
 gutenberg-catalog.csv
+
+# Playwright CLI trace artifacts: local tool output, not source.
+.playwright-cli/

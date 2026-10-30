@@ -10,10 +10,12 @@ import { coverToDataUrl, generateCover as drawPlaceholderCover } from '../lib/co
 import { buildUnits } from '../lib/engine/segment.js';
 import { askAi } from '../lib/ai.js';
 import { deleteBook, getBook, listBooks, newBookId, saveBook, updateProgress } from '../lib/store.js';
+import { downloadSourceFile, uploadSourceFile } from '../lib/source-file.js';
 import { LibraryView } from './library.js';
 import { ImportCard } from './import-card.js';
 import { OnlineLibrary } from './online-library.js';
 import { ReaderView } from './reader.js';
+import { SourcePreview } from './source-preview.js';
 import { WordList } from './wordlist.js';
 
 
@@ -111,6 +113,8 @@ export function EnglishReaderPage({ t, build }) {
   const [sort, setSort] = useState('recent');
   const [menuOpen, setMenuOpen] = useState(false);
   const [sourceOpen, setSourceOpen] = useState(false);
+  // The book whose source file is being looked at.
+  const [previewBookId, setPreviewBookId] = useState(null);
   const fileRef = useRef(null);
   const saveTimer = useRef(null);
   const importStartedAt = useRef(0);
@@ -238,6 +242,13 @@ export function EnglishReaderPage({ t, build }) {
     };
     report({ stage: 'save', ratio: 0 });
     await saveBook(book);
+    // 原始文件也交给宿主存着：书要能看原样，也要能下载走。
+    // 存不住不影响导入——书照样入库，只是这本书没有源文件。
+    try {
+      await uploadSourceFile(book.id, file, { format: parsed.format, contentType: file?.type });
+    } catch (error) {
+      console.warn('[reader] 源文件没有存住：' + (error?.message ?? String(error)));
+    }
     report({ stage: 'save', ratio: 1 });
     return { book, hasRealCover };
   }, []);
@@ -332,6 +343,15 @@ export function EnglishReaderPage({ t, build }) {
     await refresh();
   }, [books, refresh]);
 
+  // The source file of a book: the EPUB or PDF the learner imported.
+  const openSource = useCallback((id) => {
+    setPreviewBookId(id);
+  }, []);
+
+  const downloadSource = useCallback(async (id) => {
+    return downloadSourceFile(id);
+  }, []);
+
   // The reader reports how long and how much was read; it lands on the book.
   const onActivity = useCallback(async (activity, playedMs) => {
     if (activeBookId === null) return;
@@ -343,6 +363,12 @@ export function EnglishReaderPage({ t, build }) {
   const activeBook = useMemo(
     () => books.find((entry) => entry.id === activeBookId) ?? null,
     [books, activeBookId],
+  );
+
+  // The book whose source file is being looked at.
+  const previewBook = useMemo(
+    () => books.find((entry) => entry.id === previewBookId) ?? null,
+    [books, previewBookId],
   );
 
   // The shelf can be sorted the way a learner expects.
@@ -477,6 +503,8 @@ export function EnglishReaderPage({ t, build }) {
           onDelete,
           onRename,
           onListen: listenBook,
+          onOpenSource: openSource,
+          onDownloadSource: downloadSource,
           onGenerateCover: (id) => {
             const book = books.find((entry) => entry.id === id);
             if (book === undefined) return Promise.resolve(false);
@@ -516,6 +544,21 @@ export function EnglishReaderPage({ t, build }) {
         t,
         onClose: () => { setSourceOpen(false); },
         onImported,
+      })
+      : null,
+    // The source file of a book: the EPUB or PDF the learner imported.
+    previewBook !== null
+      ? h(SourcePreview, {
+        t,
+        book: previewBook,
+        onClose: () => { setPreviewBookId(null); },
+        onDownload: async () => {
+          try {
+            await downloadSource(previewBook.id);
+          } catch (error) {
+            console.warn('[reader] 源文件下载失败：' + (error?.message ?? String(error)));
+          }
+        },
       })
       : null,
     h('input', {

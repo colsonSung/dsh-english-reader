@@ -10,6 +10,7 @@
 import { createElement as h, useCallback, useEffect, useMemo, useState } from 'react';
 import { ImportIcon, TrashIcon, BookIcon, PlayIcon, MoreIcon } from './icons.js';
 import { bookWordCount, wordFrequency } from '../lib/frequency.js';
+import { formatBytes } from '../lib/source-file.js';
 
 /**
  * A human duration, split into minutes and seconds.
@@ -40,6 +41,20 @@ function formatWords(words) {
   const value = Math.max(0, Math.round(words ?? 0));
   if (value < 1000) return `${value} 词`;
   return `${(value / 1000).toFixed(1)}k 词`;
+}
+
+/**
+ * Fill `{name}` placeholders in a locale string. The locale service has no
+ * interpolation of its own, so the plugin does it here.
+ * @param {string} template
+ * @param {Record<string, number|string>} values
+ * @returns {string}
+ */
+function format(template, values) {
+  return Object.entries(values).reduce(
+    (text, [key, value]) => text.replaceAll(`{${key}}`, String(value)),
+    template,
+  );
 }
 
 /**
@@ -104,11 +119,13 @@ export function Modal({ title, onClose, children, size = 'default' }) {
  * @param {'grid'|'list'} props.view
  * @param {Function} props.onViewChange
  * @param {Function} props.onListen
+ * @param {Function} [props.onOpenSource] - show the source file of a book
+ * @param {Function} [props.onDownloadSource] - download the source file
  * @returns {any} the element tree
  */
 export function LibraryView({
   t, books, error, onFiles, onOpen, onDelete, onRename, onGenerateCover,
-  view, onViewChange, onListen, build,
+  view, onViewChange, onListen, onOpenSource, onDownloadSource, build,
 }) {
   const [query, setQuery] = useState('');
   const [menuFor, setMenuFor] = useState(null);
@@ -184,6 +201,39 @@ export function LibraryView({
     setMenuFor(null);
     setModal({ kind: 'details', book });
   };
+
+  /**
+   * Whether the book still has its source file.
+   *
+   * The Host writes the metadata of the source file into the book record, so a
+   * book without that field simply has no source file — it was imported before
+   * the shelf kept them, or the file could not be stored.
+   *
+   * @param {object} book - the book.
+   * @returns {boolean} true when the source file is there.
+   */
+  const hasSource = (book) => {
+    const source = book?.source;
+    if (source === null || typeof source !== 'object') return false;
+    return typeof source.fileName === 'string' || Number(source.size) > 0;
+  };
+
+  // The source file of a book: the EPUB or PDF the learner imported.
+  const openSource = useCallback((book) => {
+    setMenuFor(null);
+    onOpenSource?.(book.id);
+  }, [onOpenSource]);
+
+  const downloadSource = useCallback(async (book) => {
+    setMenuFor(null);
+    setNotice({ kind: 'busy', text: t('library.sourceDownloading') });
+    try {
+      const name = await onDownloadSource?.(book.id);
+      setNotice({ kind: 'ok', text: format(t('library.sourceDownloaded'), { name: name ?? '' }) });
+    } catch (error) {
+      setNotice({ kind: 'error', text: error?.message ?? t('library.sourceFailed') });
+    }
+  }, [onDownloadSource, t]);
 
   const startRename = (book) => {
     setMenuFor(null);
@@ -295,6 +345,28 @@ export function LibraryView({
       {
         type: 'button',
         className: 'er-book-menu-item',
+        disabled: !hasSource(book),
+        title: hasSource(book) ? t('library.sourceView') : t('library.sourceMissing'),
+        onClick: () => { openSource(book); },
+      },
+      t('library.sourceView'),
+    ),
+    h(
+      'button',
+      {
+        type: 'button',
+        className: 'er-book-menu-item',
+        disabled: !hasSource(book),
+        title: hasSource(book) ? t('library.sourceDownload') : t('library.sourceMissing'),
+        onClick: () => { void downloadSource(book); },
+      },
+      t('library.sourceDownload'),
+    ),
+    h(
+      'button',
+      {
+        type: 'button',
+        className: 'er-book-menu-item',
         disabled: pendingCover !== null,
         onClick: () => { void drawCover(book); },
       },
@@ -392,6 +464,11 @@ export function LibraryView({
         [t('library.detailReadTime'), formatDuration(activity?.totalMs ?? 0)],
         [t('library.detailAdded'), new Date(book.addedAt ?? Date.now()).toLocaleDateString()],
       ];
+      // 源文件在详情里也占一行：学习者一眼就知道这本书还能不能带走。
+      if (hasSource(book)) {
+        rows.push([t('source.fileName'), book.source.fileName || '—']);
+        rows.push([t('source.size'), formatBytes(book.source.size)]);
+      }
       return h(
         Modal,
         { title: book.title, onClose: () => { setModal(null); } },

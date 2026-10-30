@@ -572,7 +572,79 @@ test('封面上的两个按钮都有反应：朗读会触发，菜单会打开',
   })
   const menu = container.querySelector('.er-book-menu')
   assert.ok(menu, 'the menu opens from the list row')
-  assert.equal(menu.querySelectorAll('.er-book-menu-item').length, 5)
+  assert.equal(menu.querySelectorAll('.er-book-menu-item').length, 7)
+
+  // 没有源文件的书：查看与下载都是关着的，并且说清楚为什么。
+  const sourceItems = Array.from(menu.querySelectorAll('.er-book-menu-item'))
+    .filter((item) => item.textContent === 'library.sourceView' || item.textContent === 'library.sourceDownload')
+  assert.equal(sourceItems.length, 2)
+  for (const item of sourceItems) {
+    assert.equal(item.disabled, true)
+    assert.equal(item.title, 'library.sourceMissing')
+  }
+
+  await act(async () => { root.unmount() })
+})
+
+test('有源文件的书：查看与下载都能点', async () => {
+  const { LibraryView } = await import('../src/ui/library.js')
+  const books = [
+    {
+      id: 'b2', title: 'MOVE', author: 'A', format: 'epub', chapters: [{ title: 'One', paragraphs: ['a'] }],
+      cover: 'data:image/jpeg;base64,AAA', progress: { percent: 0 },
+      source: { fileName: 'MOVE.epub', format: 'epub', contentType: 'application/epub+zip', size: 1024, storedAt: 1 },
+    },
+  ]
+  const container = dom.window.document.createElement('div')
+  dom.window.document.body.appendChild(container)
+  const root = ReactDOM.createRoot(container)
+  const opened = []
+  const downloaded = []
+  const render = (view) => React.createElement(LibraryView, {
+    t: (key) => key,
+    books,
+    busy: false,
+    error: '',
+    view,
+    onViewChange: () => {},
+    onFiles: () => {},
+    onOpen: () => {},
+    onDelete: () => {},
+    onRename: () => {},
+    onListen: () => {},
+    onOpenSource: (id) => { opened.push(id); },
+    onDownloadSource: async (id) => { downloaded.push(id); return 'MOVE.epub'; },
+  })
+  await act(async () => { root.render(render('list')) })
+
+  const cover = container.querySelector('.er-book-cover-small')
+  await act(async () => {
+    cover.querySelector('.er-cover-menu').dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true }))
+  })
+  const menu = container.querySelector('.er-book-menu')
+  const view = Array.from(menu.querySelectorAll('.er-book-menu-item'))
+    .find((item) => item.textContent === 'library.sourceView')
+  const download = Array.from(menu.querySelectorAll('.er-book-menu-item'))
+    .find((item) => item.textContent === 'library.sourceDownload')
+  assert.ok(view && download, 'the menu carries the two source entries')
+  assert.equal(view.disabled, false)
+  assert.equal(download.disabled, false)
+
+  await act(async () => {
+    view.dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true }))
+  })
+  assert.deepEqual(opened, ['b2'])
+
+  await act(async () => {
+    cover.querySelector('.er-cover-menu').dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true }))
+  })
+  const menuAgain = container.querySelector('.er-book-menu')
+  const downloadAgain = Array.from(menuAgain.querySelectorAll('.er-book-menu-item'))
+    .find((item) => item.textContent === 'library.sourceDownload')
+  await act(async () => {
+    downloadAgain.dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true }))
+  })
+  assert.deepEqual(downloaded, ['b2'])
 
   await act(async () => { root.unmount() })
 })

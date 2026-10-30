@@ -204,7 +204,7 @@ over http.
 cd plugin
 pnpm install
 node build.mjs                 # → client.js and client.pdf.js
-node --test tests/*.test.mjs    # 257 passing
+node --test tests/*.test.mjs    # 310 passing
 ```
 
 `client.js` and `client.pdf.js` are the shipped browser bundles and are
@@ -224,7 +224,7 @@ plugin/              the DeepSeek Harness bundle
   src/host/          the Host services: the shelf on disk, AI, MiniMax, Gutenberg
   src/lib/           parsers, the reading engine, the shelf client and its fallback
   src/ui/            the shelf, the reader, the word card, the vocabulary
-  tests/             257 tests over the parsers, the engine, the shelf and the UI
+  tests/             310 tests over the parsers, the engine, the shelf and the UI
   tools/preview/     a standalone harness that renders the reader
 docs/                the screenshots and the demo recording
 install.sh           installs the bundle into a profile

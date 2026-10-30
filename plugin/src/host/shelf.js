@@ -9,6 +9,7 @@
  * 磁盘布局（契约 docs/CONTRACT-SHELF.md 第 3 节）：
  *
  *   <dir>/books/<bookId>.json   一本书一个文件（整条记录）
+ *   <dir>/sources/<bookId>.<ext> 一本书的原始文件（导入时的那个 EPUB/PDF）
  *   <dir>/vocabulary.json       { "<id>": VocabEntry }
  *   <dir>/notes.json            { "<id>": Note }
  *   <dir>/podcasts.json         { "<id>": PodcastEpisode }
@@ -22,7 +23,7 @@
  *   3. 记录原样保存，不裁字段、不校验 schema：学习者的数据不能被宿主弄丢。
  */
 
-import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, unlinkSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, statSync, unlinkSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 
@@ -31,6 +32,9 @@ export const DEFAULT_DIR = join(homedir(), '.dsh', 'reader');
 
 /** 一本书一个文件，放在这个子目录里；第一次写入时才创建。 */
 const BOOKS_DIR = 'books';
+
+/** 一本书的原始文件放在这个子目录里。 */
+const SOURCES_DIR = 'sources';
 
 /** 生词本、笔记、播客各一个文件，整张表放在里面。 */
 const VOCAB_FILE = 'vocabulary.json';
@@ -121,6 +125,54 @@ function writeJsonAtomic(file, value) {
 }
 
 /**
+ * 原子地写一个二进制文件：先写 `<file>.tmp`，再 rename 覆盖目标。
+ *
+ * @param {string} file - 目标文件。
+ * @param {Uint8Array} bytes - 要写进去的字节。
+ */
+function writeBytesAtomic(file, bytes) {
+  mkdirSync(dirname(file), { recursive: true });
+  const tmp = file + '.tmp';
+  try {
+    writeFileSync(tmp, bytes);
+    renameSync(tmp, file);
+  } catch (error) {
+    try {
+      unlinkSync(tmp);
+    } catch {
+      // 临时文件本来就不在了。
+    }
+    throw error;
+  }
+}
+
+/**
+ * 源文件的格式名：只允许小写字母与数字，其余换成下划线；空格式退回 `bin`。
+ *
+ * @param {any} format - 格式名。
+ * @returns {string} 安全的格式名。
+ */
+export function safeFormat(format) {
+  const name = String(format ?? '').trim().toLowerCase().replace(/[^a-z0-9]/g, '_');
+  return name === '' ? 'bin' : name;
+}
+
+/**
+ * 把各种字节容器统一成 Uint8Array。
+ *
+ * @param {any} value - 字节。
+ * @returns {Uint8Array|null} 字节，认不出来时是 null。
+ */
+function toBytes(value) {
+  if (value === null || value === undefined) return null;
+  if (value instanceof Uint8Array) return value;
+  if (value instanceof ArrayBuffer) return new Uint8Array(value);
+  if (ArrayBuffer.isView(value)) return new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
+  if (Array.isArray(value)) return new Uint8Array(value);
+  return null;
+}
+
+/**
  * 让同一个文件上的写操作排队执行。
  *
  * @param {string} key - 文件路径。
@@ -199,6 +251,7 @@ function removeTableEntry(file, id) {
 export function createShelf(options = {}) {
   const dir = resolveDir(options);
   const booksDir = join(dir, BOOKS_DIR);
+  const sourcesDir = join(dir, SOURCES_DIR);
   const vocabFile = join(dir, VOCAB_FILE);
   const notesFile = join(dir, NOTES_FILE);
   const podcastsFile = join(dir, PODCASTS_FILE);
@@ -210,6 +263,72 @@ export function createShelf(options = {}) {
    * @returns {string} 路径。
    */
   const bookFile = (id) => join(booksDir, `${safeFileName(id)}.json`);
+
+  /**
+   * 一本书的原始文件在磁盘上的路径。
+   *
+   * @param {string} id - 书的 id。
+   * @param {string} format - 格式名（epub、pdf……）。
+   * @returns {string} 路径。
+   */
+  const sourceFile = (id, format) => join(sourcesDir, `${safeFileName(id)}.${safeFormat(format)}`);
+
+  /**
+   * 这本书在 sources/ 下的文件：先按记录的格式找，再按目录里实际有的找。
+   *
+   * @param {string} id - 书的 id。
+   * @param {object} [record] - 那本书的记录（可能没有 source 字段）。
+   * @returns {string|null} 路径，没有源文件时是 null。
+   */
+  const findSourceFile = (id, record = null) => {
+    const known = safeFormat(record?.source?.format);
+    const exact = sourceFile(id, known);
+    if (existsSync(exact)) return exact;
+    // 记录里的格式可能对不上（老记录、或者格式变了）：按前缀在目录里找一遍。
+    const prefix = `${safeFileName(id)}.`;
+    let names = [];
+    try {
+      names = readdirSync(sourcesDir);
+    } catch {
+      return undefined;
+    }
+    for (const name of names) {
+      if (!name.startsWith(prefix)) continue;
+      if (name.endsWith('.tmp')) continue;
+      return join(sourcesDir, name);
+    }
+    return undefined;
+  };
+
+  /**
+   * 把一份源文件的元数据读出来。
+   *
+   * @param {string} id - 书的 id。
+   * @param {object} [record] - 那本书的记录。
+   * @returns {object|undefined} 元数据，没有源文件时是 undefined。
+   */
+  const readSourceMeta = (id, record = null) => {
+    const file = findSourceFile(id, record);
+    if (file === undefined) return undefined;
+    let size = 0;
+    let storedAt = Date.now();
+    try {
+      const info = statSync(file);
+      size = Number(info.size) || 0;
+      storedAt = Number(info.mtimeMs) || Date.now();
+    } catch {
+      // 读不到大小就用 0：文件多半正在被写。
+    }
+    const known = isRecord(record?.source) ? record.source : {};
+    const format = safeFormat(known.format ?? file.slice(file.lastIndexOf('.') + 1));
+    return {
+      fileName: typeof known.fileName === 'string' ? known.fileName : '',
+      format,
+      contentType: typeof known.contentType === 'string' ? known.contentType : '',
+      size: Number(known.size) || size,
+      storedAt: Number(known.storedAt) || storedAt,
+    };
+  };
 
   return {
     /** 书库根目录。 */
@@ -275,8 +394,108 @@ export function createShelf(options = {}) {
       if (id === '') return;
       const file = bookFile(id);
       await withFileLock(file, () => {
-        writeJsonAtomic(file, book);
+        // 客户端会把它手里的整条记录写回来，而那条记录往往没有 source 字段
+        // （它是在源文件保存之前读到的）。宿主不能因此把学习者的源文件信息弄丢：
+        // 记录里没有 source 时，磁盘上已有的那份保留下来。
+        const existing = readJson(file);
+        const known = isRecord(existing?.source) ? existing.source : null;
+        const merged = known !== null && !isRecord(book.source) ? { ...book, source: known } : book;
+        writeJsonAtomic(file, merged);
       });
+    },
+
+    /**
+     * 写入一本书的原始文件：导入时的那个 EPUB/PDF/TXT。
+     *
+     * 字节落在 `<dir>/sources/<bookId>.<format>`，元数据合并进那本书的记录，
+     * 于是书库里一眼就能看出这本书有没有源文件。
+     *
+     * @param {string} id - 书的 id。
+     * @param {object} source - 源文件。
+     * @param {string} [source.fileName] - 原始文件名。
+     * @param {string} [source.format] - 格式（epub、pdf、txt……）。
+     * @param {string} [source.contentType] - MIME 类型。
+     * @param {Uint8Array|Buffer} [source.bytes] - 文件的字节。
+     * @returns {Promise<object|undefined>} 存下来的元数据；没有字节时是 undefined。
+     */
+    async putSource(id, source) {
+      const key = typeof id === 'string' ? id : '';
+      if (key === '') return undefined;
+      const bytes = toBytes(source?.bytes);
+      if (bytes === null || bytes.length === 0) return undefined;
+      const format = safeFormat(source?.format);
+      const file = sourceFile(key, format);
+      await withFileLock(file, () => {
+        writeBytesAtomic(file, bytes);
+      });
+      // 换了格式的旧文件不要留在目录里：同一本书只保留一个源文件。
+      const prefix = `${safeFileName(key)}.`;
+      let names = [];
+      try {
+        names = readdirSync(sourcesDir);
+      } catch {
+        names = [];
+      }
+      for (const name of names) {
+        if (!name.startsWith(prefix)) continue;
+        if (join(sourcesDir, name) === file) continue;
+        try {
+          unlinkSync(join(sourcesDir, name));
+        } catch {
+          // 已经不在了。
+        }
+      }
+      const meta = {
+        fileName: typeof source?.fileName === 'string' ? source.fileName : '',
+        format,
+        contentType: typeof source?.contentType === 'string' ? source.contentType : '',
+        size: bytes.length,
+        storedAt: Date.now(),
+      };
+      // 元数据跟着书记录走：书库里一眼就能看出这本书有没有源文件。
+      const bookPath = bookFile(key);
+      await withFileLock(bookPath, () => {
+        const record = readJson(bookPath);
+        // 书可能还没写进来（客户端先传文件再存书）：这时只存文件，不报错。
+        if (!isRecord(record)) return;
+        writeJsonAtomic(bookPath, { ...record, source: meta });
+      });
+      return meta;
+    },
+
+    /**
+     * 读一本书的源文件元数据。
+     *
+     * @param {string} id - 书的 id。
+     * @returns {Promise<object|undefined>} 元数据；没有源文件时是 undefined。
+     */
+    async getSourceMeta(id) {
+      const key = typeof id === 'string' ? id : '';
+      if (key === '') return undefined;
+      const record = readJson(bookFile(key));
+      return readSourceMeta(key, isRecord(record) ? record : null);
+    },
+
+    /**
+     * 读一本书的源文件。
+     *
+     * @param {string} id - 书的 id。
+     * @returns {Promise<{ meta: object, bytes: Uint8Array }|undefined>} 源文件；没有时是 undefined。
+     */
+    async getSource(id) {
+      const key = typeof id === 'string' ? id : '';
+      if (key === '') return undefined;
+      const record = readJson(bookFile(key));
+      const meta = readSourceMeta(key, isRecord(record) ? record : null);
+      if (meta === undefined) return undefined;
+      const file = findSourceFile(key, isRecord(record) ? record : null);
+      if (file === undefined) return undefined;
+      try {
+        return { meta, bytes: new Uint8Array(readFileSync(file)) };
+      } catch {
+        // 文件读不出来：当作没有源文件。
+        return undefined;
+      }
     },
 
     /**
@@ -305,7 +524,7 @@ export function createShelf(options = {}) {
     },
 
     /**
-     * 删除一本书。
+     * 删除一本书，连同它的源文件。
      *
      * @param {string} id - 书的 id。
      * @returns {Promise<void>}
@@ -321,6 +540,22 @@ export function createShelf(options = {}) {
           // 已经不在了。
         }
       });
+      // 源文件跟着书一起走：书删了，文件也不该留在磁盘上。
+      const prefix = `${safeFileName(key)}.`;
+      let names = [];
+      try {
+        names = readdirSync(sourcesDir);
+      } catch {
+        return;
+      }
+      for (const name of names) {
+        if (!name.startsWith(prefix)) continue;
+        try {
+          unlinkSync(join(sourcesDir, name));
+        } catch {
+          // 已经不在了。
+        }
+      }
     },
 
     /**

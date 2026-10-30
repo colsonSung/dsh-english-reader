@@ -35,6 +35,17 @@ import { createShelf } from './src/host/shelf.js';
 /** The route the client half posts its requests to. */
 export const ROUTE = '/api/reader';
 
+/**
+ * The route the source files travel on.
+ *
+ * The body of a request is the file itself and the answer is the file itself:
+ * a book can be tens of megabytes, and base64 in a JSON envelope would make it
+ * a third bigger for nothing. What is known about the file (its name, its type,
+ * its format) travels in the query string, because a header cannot carry a
+ * file name with Chinese characters in it.
+ */
+export const SOURCE_ROUTE = '/api/reader/source';
+
 /** The methods the client half may ask for. */
 const METHODS = new Set(['word', 'translate', 'breakdown', 'mindmap', 'podcast', 'podcastReply', 'tts', 'asr', 'cover', 'voices', 'status', 'source', 'shelf']);
 
@@ -149,6 +160,25 @@ async function handleShelf(shelf, payload) {
 }
 
 /**
+ * The name a download is offered under.
+ *
+ * The `Content-Disposition` header may only carry a plain name; the real name
+ * travels in `filename*` (RFC 5987) and in `x-reader-file-name`, which the
+ * client decodes itself.
+ *
+ * @param {string} fileName - the name the file had when it was imported.
+ * @param {string} id - the book the file belongs to.
+ * @param {string} format - the format of the file.
+ * @returns {string} a name that only uses ASCII characters.
+ */
+function asciiFileName(fileName, id, format) {
+  const base = String(fileName ?? '').trim();
+  const ascii = base.replace(/[^\x20-\x7e]/g, '_').replace(/["\\]/g, '');
+  if (ascii !== '') return ascii;
+  return `${String(id ?? 'book').replace(/[^\x20-\x7e]/g, '_')}.${String(format ?? 'bin')}`;
+}
+
+/**
  * Activate the bundle row.
  * @param {object} ctx - the Host plugin context.
  */
@@ -157,6 +187,69 @@ export function apply(ctx) {
     // The shelf belongs to the Host and lives on disk, so the desktop app and
     // every browser see the same library.
     const shelf = createShelf(shelfOptions(connectionCtx));
+
+    // The source file of a book: the EPUB or PDF the learner imported. It is
+    // kept next to the shelf so the learner can look at the original file and
+    // take it away again.
+    connectionCtx.effect(() => {
+      try {
+        return connectionCtx.connection.fetch.register({
+          path: SOURCE_ROUTE,
+          methods: ['GET', 'POST'],
+          requestBody: 'buffered',
+          fetch: async (request) => {
+            try {
+              const url = new URL(request.url, 'http://localhost');
+              const id = url.searchParams.get('id') ?? '';
+              if (id === '') {
+                return Response.json(failure('reader/source-bad-request', '缺少书籍 id'), { status: 400 });
+              }
+              if (request.method === 'POST') {
+                const bytes = new Uint8Array(await request.arrayBuffer());
+                if (bytes.length === 0) {
+                  return Response.json(failure('reader/source-empty', '源文件是空的'), { status: 400 });
+                }
+                const meta = await shelf.putSource(id, {
+                  fileName: url.searchParams.get('name') ?? '',
+                  format: url.searchParams.get('format') ?? '',
+                  contentType: url.searchParams.get('type') ?? '',
+                  bytes,
+                });
+                if (meta === undefined) {
+                  return Response.json(failure('reader/source-failed', '源文件保存失败'), { status: 400 });
+                }
+                return Response.json({ ok: true, result: meta });
+              }
+              const source = await shelf.getSource(id);
+              if (source === undefined) {
+                return Response.json(failure('reader/source-missing', '这本书没有保留源文件'), { status: 404 });
+              }
+              const meta = source.meta;
+              const name = asciiFileName(meta.fileName, id, meta.format);
+              const download = url.searchParams.get('download') === '1';
+              return new Response(source.bytes, {
+                status: 200,
+                headers: {
+                  'content-type': meta.contentType || 'application/octet-stream',
+                  'content-length': String(source.bytes.length),
+                  'content-disposition': `${download ? 'attachment' : 'inline'}; filename="${name}"`,
+                  'x-reader-file-name': encodeURIComponent(meta.fileName || name),
+                },
+              });
+            } catch (error) {
+              return Response.json(
+                failure('reader/source-failed', error instanceof Error ? error.message : String(error)),
+                { status: 500 },
+              );
+            }
+          },
+        });
+      } catch (error) {
+        console.warn('[reader] source route registration failed: ' + String(error));
+        return () => {};
+      }
+    }, 'reader: ' + SOURCE_ROUTE);
+
     connectionCtx.effect(() => {
       try {
         return connectionCtx.connection.fetch.register({
